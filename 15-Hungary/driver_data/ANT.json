@@ -1,33 +1,14 @@
 {
-  "driverId": "yukitsunodadriver",
-  "name": "yukitsunodadriver",
-  "displayName": "yukitsunoda",
-  "abbreviation": "TSU",
-  "team": "Red Bull Racing",
-  "position": 13,
-  "value": "0",
-  "cost": "$11.2M",
-  "percentagePicked": 0,
-  "teamSwap": true,
-  "teams": [
-    "Red Bull Racing",
-    "Racing Bulls"
-  ],
-  "teamSwapDetails": [
-    {
-      "team": "Red Bull Racing",
-      "position": 13,
-      "cost": "$11.2M",
-      "points": 123
-    },
-    {
-      "team": "Racing Bulls",
-      "position": 20,
-      "cost": "$8.4M",
-      "points": 123
-    }
-  ],
-  "seasonTotalPoints": 246,
+  "driverId": "kimiantonellidriver",
+  "name": "kimiantonellidriver",
+  "displayName": "kimiantonelli",
+  "abbreviation": "ANT",
+  "team": "Mercedes",
+  "position": 8,
+  "value": "15.9M",
+  "seasonTotalPoints": 123,
+  "percentagePicked": 19,
+  "isInactive": false,
   "races": [
     {
       "round": "01",
@@ -39,9 +20,7 @@
         "qualifyingPosition": 0,
         "fastestLap": 0,
         "overtakeBonus": 20
-      },
-      "team": "Red Bull Racing",
-      "source": "single"
+      }
     },
     {
       "round": "02",
@@ -59,9 +38,7 @@
         "qualifyingPosition": 0,
         "fastestLap": 0,
         "overtakeBonus": 2
-      },
-      "team": "Red Bull Racing",
-      "source": "single"
+      }
     },
     {
       "round": "03",
@@ -73,9 +50,7 @@
         "qualifyingPosition": 5,
         "fastestLap": 10,
         "overtakeBonus": 0
-      },
-      "team": "Red Bull Racing",
-      "source": "single"
+      }
     },
     {
       "round": "04",
@@ -87,9 +62,7 @@
         "qualifyingPosition": 7,
         "fastestLap": 0,
         "overtakeBonus": 7
-      },
-      "team": "Red Bull Racing",
-      "source": "single"
+      }
     },
     {
       "round": "05",
@@ -101,9 +74,7 @@
         "qualifyingPosition": 6,
         "fastestLap": 0,
         "overtakeBonus": 1
-      },
-      "team": "Red Bull Racing",
-      "source": "single"
+      }
     },
     {
       "round": "06",
@@ -121,9 +92,7 @@
         "qualifyingPosition": 0,
         "fastestLap": 0,
         "overtakeBonus": -6
-      },
-      "team": "Red Bull Racing",
-      "source": "single"
+      }
     },
     {
       "round": "07",
@@ -135,9 +104,7 @@
         "qualifyingPosition": 0,
         "fastestLap": 0,
         "overtakeBonus": 1
-      },
-      "team": "Red Bull Racing",
-      "source": "single"
+      }
     },
     {
       "round": "08",
@@ -149,9 +116,7 @@
         "qualifyingPosition": 0,
         "fastestLap": 0,
         "overtakeBonus": -2
-      },
-      "team": "Red Bull Racing",
-      "source": "single"
+      }
     },
     {
       "round": "09",
@@ -163,9 +128,7 @@
         "qualifyingPosition": 5,
         "fastestLap": 0,
         "overtakeBonus": 3
-      },
-      "team": "Red Bull Racing",
-      "source": "single"
+      }
     },
     {
       "round": "10",
@@ -177,9 +140,7 @@
         "qualifyingPosition": 7,
         "fastestLap": 0,
         "overtakeBonus": 3
-      },
-      "team": "Red Bull Racing",
-      "source": "single"
+      }
     },
     {
       "round": "11",
@@ -191,9 +152,7 @@
         "qualifyingPosition": 2,
         "fastestLap": 0,
         "overtakeBonus": 0
-      },
-      "team": "Red Bull Racing",
-      "source": "single"
+      }
     },
     {
       "round": "12",
@@ -205,9 +164,7 @@
         "qualifyingPosition": 4,
         "fastestLap": 0,
         "overtakeBonus": 0
-      },
-      "team": "Red Bull Racing",
-      "source": "single"
+      }
     },
     {
       "round": "13",
@@ -225,9 +182,7 @@
         "qualifyingPosition": 0,
         "fastestLap": 0,
         "overtakeBonus": 3
-      },
-      "team": "Red Bull Racing",
-      "source": "single"
+      }
     },
     {
       "round": "14",
@@ -239,9 +194,7 @@
         "qualifyingPosition": 0,
         "fastestLap": 0,
         "overtakeBonus": 9
-      },
-      "team": "Red Bull Racing",
-      "source": "single"
+      }
     },
     {
       "round": "15",
@@ -253,11 +206,8 @@
         "qualifyingPosition": 0,
         "fastestLap": 0,
         "overtakeBonus": 0
-      },
-      "team": "Red Bull Racing",
-      "source": "single"
+      }
     }
   ],
-  "extractedAt": "2025-08-08T06:24:51.516Z",
-  "versions": 2
+  "extractedAt": "2025-08-08T06:44:47.991Z"
 }

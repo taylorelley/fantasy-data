@@ -6,7 +6,6 @@
   "team": "Ferrari",
   "position": 6,
   "value": "23.9M",
-  "cost": "$23.9M",
   "seasonTotalPoints": 239,
   "percentagePicked": 14,
   "isInactive": false,
@@ -210,5 +209,5 @@
       }
     }
   ],
-  "extractedAt": "2025-08-08T06:22:59.552Z"
+  "extractedAt": "2025-08-08T06:44:35.225Z"
 }

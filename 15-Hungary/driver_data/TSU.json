@@ -1,124 +1,41 @@
 {
-  "driverId": "liamlawsondriver",
-  "name": "liamlawsondriver",
-  "displayName": "liamlawson",
-  "abbreviation": "LAW",
-  "team": "Racing Bulls",
-  "position": 18,
-  "value": "15.9M",
-  "cost": "$4.5M",
-  "percentagePicked": 19,
+  "driverId": "yukitsunodadriver",
+  "name": "yukitsunodadriver",
+  "displayName": "yukitsunoda",
+  "abbreviation": "TSU",
+  "team": "Red Bull Racing",
+  "position": 13,
+  "value": "11.2M",
+  "percentagePicked": 5,
   "teamSwap": true,
   "teams": [
-    "Racing Bulls",
-    "Red Bull Racing"
+    "Red Bull Racing",
+    "Racing Bulls"
   ],
   "teamSwapDetails": [
     {
-      "team": "Racing Bulls",
-      "position": 18,
-      "cost": "$4.5M",
-      "points": 123
+      "team": "Red Bull Racing",
+      "position": 13,
+      "value": "11.2M",
+      "points": 74
     },
     {
-      "team": "Red Bull Racing",
-      "position": 21,
-      "cost": "$16.8M",
-      "points": 123
+      "team": "Racing Bulls",
+      "position": 20,
+      "value": "8.4M",
+      "points": 6
     }
   ],
-  "seasonTotalPoints": 246,
+  "seasonTotalPoints": 80,
   "races": [
     {
       "round": "01",
       "raceName": "Australia",
-      "totalPoints": 32,
-      "race": {
-        "dotd": 0,
-        "position": 12,
-        "qualifyingPosition": 0,
-        "fastestLap": 0,
-        "overtakeBonus": 20
-      },
-      "team": "Racing Bulls",
-      "source": "single"
-    },
-    {
-      "round": "02",
-      "raceName": "China",
-      "totalPoints": 29,
-      "race": {
-        "dotd": 10,
-        "position": 8,
-        "qualifyingPosition": 3,
-        "fastestLap": 0,
-        "overtakeBonus": 4
-      },
-      "sprint": {
-        "position": 2,
-        "qualifyingPosition": 0,
-        "fastestLap": 0,
-        "overtakeBonus": 2
-      },
-      "team": "Racing Bulls",
-      "source": "single"
-    },
-    {
-      "round": "03",
-      "raceName": "Japan",
-      "totalPoints": 23,
-      "race": {
-        "dotd": 0,
-        "position": 8,
-        "qualifyingPosition": 5,
-        "fastestLap": 10,
-        "overtakeBonus": 0
-      },
-      "team": "Racing Bulls",
-      "source": "single"
-    },
-    {
-      "round": "04",
-      "raceName": "Bahrain",
-      "totalPoints": 14,
+      "totalPoints": 0,
       "race": {
         "dotd": 0,
         "position": 0,
-        "qualifyingPosition": 7,
-        "fastestLap": 0,
-        "overtakeBonus": 7
-      },
-      "team": "Racing Bulls",
-      "source": "single"
-    },
-    {
-      "round": "05",
-      "raceName": "Saudi Arabia",
-      "totalPoints": 15,
-      "race": {
-        "dotd": 0,
-        "position": 8,
         "qualifyingPosition": 6,
-        "fastestLap": 0,
-        "overtakeBonus": 1
-      },
-      "team": "Racing Bulls",
-      "source": "single"
-    },
-    {
-      "round": "06",
-      "raceName": "United States",
-      "totalPoints": 11,
-      "race": {
-        "dotd": 0,
-        "position": 8,
-        "qualifyingPosition": 8,
-        "fastestLap": 0,
-        "overtakeBonus": -1
-      },
-      "sprint": {
-        "position": 2,
-        "qualifyingPosition": 0,
         "fastestLap": 0,
         "overtakeBonus": -6
       },
@@ -126,121 +43,203 @@
       "source": "single"
     },
     {
-      "round": "07",
-      "raceName": "Italy",
-      "totalPoints": -19,
-      "race": {
-        "dotd": 0,
-        "position": 0,
-        "qualifyingPosition": 0,
-        "fastestLap": 0,
-        "overtakeBonus": 1
-      },
-      "team": "Racing Bulls",
-      "source": "single"
-    },
-    {
-      "round": "08",
-      "raceName": "Monaco",
-      "totalPoints": -2,
-      "race": {
-        "dotd": 0,
-        "position": 0,
-        "qualifyingPosition": 0,
-        "fastestLap": 0,
-        "overtakeBonus": -2
-      },
-      "team": "Racing Bulls",
-      "source": "single"
-    },
-    {
-      "round": "09",
-      "raceName": "Spain",
-      "totalPoints": -12,
-      "race": {
-        "dotd": 0,
-        "position": 0,
-        "qualifyingPosition": 5,
-        "fastestLap": 0,
-        "overtakeBonus": 3
-      },
-      "team": "Racing Bulls",
-      "source": "single"
-    },
-    {
-      "round": "10",
-      "raceName": "Canada",
-      "totalPoints": 35,
-      "race": {
-        "dotd": 10,
-        "position": 15,
-        "qualifyingPosition": 7,
-        "fastestLap": 0,
-        "overtakeBonus": 3
-      },
-      "team": "Racing Bulls",
-      "source": "single"
-    },
-    {
-      "round": "11",
-      "raceName": "Austria",
-      "totalPoints": -18,
+      "round": "02",
+      "raceName": "China",
+      "totalPoints": 6,
       "race": {
         "dotd": 0,
         "position": 0,
         "qualifyingPosition": 2,
         "fastestLap": 0,
-        "overtakeBonus": 0
-      },
-      "team": "Racing Bulls",
-      "source": "single"
-    },
-    {
-      "round": "12",
-      "raceName": "United Kingdom",
-      "totalPoints": -16,
-      "race": {
-        "dotd": 0,
-        "position": 0,
-        "qualifyingPosition": 4,
-        "fastestLap": 0,
-        "overtakeBonus": 0
-      },
-      "team": "Racing Bulls",
-      "source": "single"
-    },
-    {
-      "round": "13",
-      "raceName": "Belgium",
-      "totalPoints": 21,
-      "race": {
-        "dotd": 0,
-        "position": 0,
-        "qualifyingPosition": 0,
-        "fastestLap": 10,
-        "overtakeBonus": 8
+        "overtakeBonus": -3
       },
       "sprint": {
+        "position": 3,
+        "qualifyingPosition": 0,
+        "fastestLap": 0,
+        "overtakeBonus": 4
+      },
+      "team": "Racing Bulls",
+      "source": "single"
+    },
+    {
+      "round": "03",
+      "raceName": "Japan",
+      "totalPoints": 13,
+      "race": {
+        "dotd": 10,
         "position": 0,
         "qualifyingPosition": 0,
         "fastestLap": 0,
         "overtakeBonus": 3
       },
-      "team": "Racing Bulls",
+      "team": "Red Bull Racing",
       "source": "single"
     },
     {
-      "round": "14",
-      "raceName": "Hungary",
-      "totalPoints": 10,
+      "round": "04",
+      "raceName": "Bahrain",
+      "totalPoints": 9,
+      "race": {
+        "dotd": 0,
+        "position": 2,
+        "qualifyingPosition": 1,
+        "fastestLap": 0,
+        "overtakeBonus": 6
+      },
+      "team": "Red Bull Racing",
+      "source": "single"
+    },
+    {
+      "round": "05",
+      "raceName": "Saudi Arabia",
+      "totalPoints": -17,
+      "race": {
+        "dotd": 0,
+        "position": 0,
+        "qualifyingPosition": 3,
+        "fastestLap": 0,
+        "overtakeBonus": 0
+      },
+      "team": "Red Bull Racing",
+      "source": "single"
+    },
+    {
+      "round": "06",
+      "raceName": "United States",
+      "totalPoints": 33,
+      "race": {
+        "dotd": 0,
+        "position": 1,
+        "qualifyingPosition": 1,
+        "fastestLap": 0,
+        "overtakeBonus": 10
+      },
+      "sprint": {
+        "position": 3,
+        "qualifyingPosition": 0,
+        "fastestLap": 0,
+        "overtakeBonus": 18
+      },
+      "team": "Red Bull Racing",
+      "source": "single"
+    },
+    {
+      "round": "07",
+      "raceName": "Italy",
+      "totalPoints": 9,
       "race": {
         "dotd": 0,
         "position": 1,
         "qualifyingPosition": 0,
         "fastestLap": 0,
-        "overtakeBonus": 9
+        "overtakeBonus": 13
       },
-      "team": "Racing Bulls",
+      "team": "Red Bull Racing",
+      "source": "single"
+    },
+    {
+      "round": "08",
+      "raceName": "Monaco",
+      "totalPoints": -5,
+      "race": {
+        "dotd": 0,
+        "position": 0,
+        "qualifyingPosition": 0,
+        "fastestLap": 0,
+        "overtakeBonus": -5
+      },
+      "team": "Red Bull Racing",
+      "source": "single"
+    },
+    {
+      "round": "09",
+      "raceName": "Spain",
+      "totalPoints": 11,
+      "race": {
+        "dotd": 0,
+        "position": 0,
+        "qualifyingPosition": 0,
+        "fastestLap": 0,
+        "overtakeBonus": 11
+      },
+      "team": "Red Bull Racing",
+      "source": "single"
+    },
+    {
+      "round": "10",
+      "raceName": "Canada",
+      "totalPoints": 12,
+      "race": {
+        "dotd": 0,
+        "position": 0,
+        "qualifyingPosition": 0,
+        "fastestLap": 0,
+        "overtakeBonus": 12
+      },
+      "team": "Red Bull Racing",
+      "source": "single"
+    },
+    {
+      "round": "11",
+      "raceName": "Austria",
+      "totalPoints": 6,
+      "race": {
+        "dotd": 0,
+        "position": 0,
+        "qualifyingPosition": 0,
+        "fastestLap": 0,
+        "overtakeBonus": 6
+      },
+      "team": "Red Bull Racing",
+      "source": "single"
+    },
+    {
+      "round": "12",
+      "raceName": "United Kingdom",
+      "totalPoints": 0,
+      "race": {
+        "dotd": 0,
+        "position": 0,
+        "qualifyingPosition": 0,
+        "fastestLap": 0,
+        "overtakeBonus": 0
+      },
+      "team": "Red Bull Racing",
+      "source": "single"
+    },
+    {
+      "round": "13",
+      "raceName": "Belgium",
+      "totalPoints": 0,
+      "race": {
+        "dotd": 0,
+        "position": 0,
+        "qualifyingPosition": 4,
+        "fastestLap": 0,
+        "overtakeBonus": -5
+      },
+      "sprint": {
+        "position": 0,
+        "qualifyingPosition": 0,
+        "fastestLap": 0,
+        "overtakeBonus": 1
+      },
+      "team": "Red Bull Racing",
+      "source": "single"
+    },
+    {
+      "round": "14",
+      "raceName": "Hungary",
+      "totalPoints": 3,
+      "race": {
+        "dotd": 0,
+        "position": 0,
+        "qualifyingPosition": 0,
+        "fastestLap": 0,
+        "overtakeBonus": 3
+      },
+      "team": "Red Bull Racing",
       "source": "single"
     },
     {
@@ -254,10 +253,10 @@
         "fastestLap": 0,
         "overtakeBonus": 0
       },
-      "team": "Racing Bulls",
+      "team": "Red Bull Racing",
       "source": "single"
     }
   ],
-  "extractedAt": "2025-08-08T06:24:51.518Z",
+  "extractedAt": "2025-08-08T06:46:26.030Z",
   "versions": 2
 }

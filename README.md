@@ -44,11 +44,28 @@ The scraper will:
 2. Navigate to the F1 Fantasy website
 3. Handle cookie consent automatically
 4. Extract data for all drivers including team swaps
-5. Save results to `driver_data/` and `summary_data/` directories
+5. Save results to a versioned folder named after the most recent race (e.g., `15-Netherlands/`)
 
 ## 📁 Output Structure
 
-### Individual Driver Files (`driver_data/`)
+All output files are saved in a versioned folder named after the most recent race (e.g., `15-Netherlands/`).
+
+### Directory Structure
+```
+15-Netherlands/
+├── driver_data/
+│   ├── NOR.json
+│   ├── TSU.json (merged team swap data)
+│   ├── LAW.json (merged team swap data)
+│   └── ... (21 total driver files)
+└── summary_data/
+    ├── weekend_summary.json
+    ├── extraction_summary.json
+    ├── team_summary.json
+    └── percentage_picked_ranking.json
+```
+
+### Individual Driver Files (`{ROUND}-{RACE}/driver_data/`)
 
 Each driver gets a file named `{ABBREVIATION}.json`:
 - `NOR.json` - Lando Norris
@@ -56,7 +73,7 @@ Each driver gets a file named `{ABBREVIATION}.json`:
 - `LAW.json` - Liam Lawson (merged team swap data)
 - etc.
 
-### Summary Files (`summary_data/`)
+### Summary Files (`{ROUND}-{RACE}/summary_data/`)
 
 1. **`weekend_summary.json`** - Points by race for all drivers
 2. **`extraction_summary.json`** - Overall statistics and driver list
@@ -76,7 +93,6 @@ Each driver gets a file named `{ABBREVIATION}.json`:
   "team": "McLaren",
   "position": 1,
   "value": "31.4M",
-  "cost": "$31.4M",
   "seasonTotalPoints": 500,
   "percentagePicked": 23,
   "teamSwap": false,
@@ -116,13 +132,13 @@ For drivers who switched teams (Tsunoda, Lawson), additional fields are included
     {
       "team": "Red Bull Racing",
       "position": 13,
-      "cost": "$11.2M",
+      "value": "11.2M",
       "points": 74
     },
     {
       "team": "Racing Bulls",
       "position": 20,
-      "cost": "$8.4M", 
+      "value": "8.4M", 
       "points": 6
     }
   ],
@@ -182,8 +198,6 @@ Edit the `CONFIG` object in `fantasy_scraper_V3.1.js`:
 ```javascript
 const CONFIG = {
     BASE_URL: 'https://fantasy.formula1.com/en/statistics/details?tab=driver&filter=fPoints',
-    OUTPUT_DIR: 'driver_data',
-    SUMMARY_OUTPUT_DIR: 'summary_data',
     BROWSER_HEADLESS: false, // Set to true for headless mode
     PROCESS_ALL_DRIVERS: true,
     DELAYS: {
@@ -193,6 +207,9 @@ const CONFIG = {
         POPUP_CLOSE: 1000
     }
 };
+
+// Output directories are now automatically created as versioned folders
+// based on the most recent race (e.g., "15-Netherlands/driver_data/")
 ```
 
 ## 🏎️ Team Swap Handling
@@ -344,12 +361,14 @@ const DRIVER_ABBREVIATIONS = {
 ## 📝 Version History
 
 ### v3.1 (Current)
+- ✅ **Versioned Export**: Data exports to folders named after most recent race (e.g., `15-Netherlands/`)
 - ✅ Individual files named as `{ABBREVIATION}.json`
 - ✅ Percentage picked data extraction
 - ✅ Proper team information from main driver list
 - ✅ Team swap logic with actual team names
 - ✅ Comprehensive summary files including popularity ranking
 - ✅ Enhanced error handling and logging
+- ✅ Removed duplicate `cost` field - now only uses `value`
 
 ### v3.0
 - ✅ Team swap driver handling (Tsunoda, Lawson)

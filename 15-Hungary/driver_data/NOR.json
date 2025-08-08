@@ -1,41 +1,40 @@
 {
-  "driverId": "maxverstappendriver",
-  "name": "maxverstappendriver",
-  "displayName": "maxverstappen",
-  "abbreviation": "VER",
-  "team": "Red Bull Racing",
-  "position": 3,
-  "value": "28.2M",
-  "cost": "$28.2M",
-  "seasonTotalPoints": 335,
-  "percentagePicked": 16,
+  "driverId": "landonorrisdriver",
+  "name": "landonorrisdriver",
+  "displayName": "landonorris",
+  "abbreviation": "NOR",
+  "team": "McLaren",
+  "position": 1,
+  "value": "31.4M",
+  "seasonTotalPoints": 500,
+  "percentagePicked": 23,
   "isInactive": false,
   "races": [
     {
       "round": "01",
       "raceName": "Australia",
-      "totalPoints": 29,
+      "totalPoints": 59,
       "race": {
-        "dotd": 0,
-        "position": 18,
-        "qualifyingPosition": 8,
-        "fastestLap": 0,
-        "overtakeBonus": 3
+        "dotd": 10,
+        "position": 25,
+        "qualifyingPosition": 10,
+        "fastestLap": 10,
+        "overtakeBonus": 4
       }
     },
     {
       "round": "02",
       "raceName": "China",
-      "totalPoints": 30,
+      "totalPoints": 41,
       "race": {
         "dotd": 0,
-        "position": 12,
-        "qualifyingPosition": 7,
-        "fastestLap": 0,
-        "overtakeBonus": 6
+        "position": 18,
+        "qualifyingPosition": 8,
+        "fastestLap": 10,
+        "overtakeBonus": 5
       },
       "sprint": {
-        "position": 6,
+        "position": 1,
         "qualifyingPosition": 0,
         "fastestLap": 0,
         "overtakeBonus": -1
@@ -44,6 +43,108 @@
     {
       "round": "03",
       "raceName": "Japan",
+      "totalPoints": 27,
+      "race": {
+        "dotd": 0,
+        "position": 18,
+        "qualifyingPosition": 9,
+        "fastestLap": 0,
+        "overtakeBonus": 0
+      }
+    },
+    {
+      "round": "04",
+      "raceName": "Bahrain",
+      "totalPoints": 32,
+      "race": {
+        "dotd": 0,
+        "position": 15,
+        "qualifyingPosition": 5,
+        "fastestLap": 0,
+        "overtakeBonus": 12
+      }
+    },
+    {
+      "round": "05",
+      "raceName": "Saudi Arabia",
+      "totalPoints": 36,
+      "race": {
+        "dotd": 0,
+        "position": 12,
+        "qualifyingPosition": 1,
+        "fastestLap": 10,
+        "overtakeBonus": 13
+      }
+    },
+    {
+      "round": "06",
+      "raceName": "United States",
+      "totalPoints": 55,
+      "race": {
+        "dotd": 0,
+        "position": 18,
+        "qualifyingPosition": 9,
+        "fastestLap": 10,
+        "overtakeBonus": 7
+      },
+      "sprint": {
+        "position": 8,
+        "qualifyingPosition": 0,
+        "fastestLap": 0,
+        "overtakeBonus": 3
+      }
+    },
+    {
+      "round": "07",
+      "raceName": "Italy",
+      "totalPoints": 31,
+      "race": {
+        "dotd": 0,
+        "position": 18,
+        "qualifyingPosition": 7,
+        "fastestLap": 0,
+        "overtakeBonus": 6
+      }
+    },
+    {
+      "round": "08",
+      "raceName": "Monaco",
+      "totalPoints": 45,
+      "race": {
+        "dotd": 0,
+        "position": 25,
+        "qualifyingPosition": 10,
+        "fastestLap": 10,
+        "overtakeBonus": 0
+      }
+    },
+    {
+      "round": "09",
+      "raceName": "Spain",
+      "totalPoints": 28,
+      "race": {
+        "dotd": 0,
+        "position": 18,
+        "qualifyingPosition": 9,
+        "fastestLap": 0,
+        "overtakeBonus": 1
+      }
+    },
+    {
+      "round": "10",
+      "raceName": "Canada",
+      "totalPoints": -2,
+      "race": {
+        "dotd": 0,
+        "position": 0,
+        "qualifyingPosition": 4,
+        "fastestLap": 0,
+        "overtakeBonus": -6
+      }
+    },
+    {
+      "round": "11",
+      "raceName": "Austria",
       "totalPoints": 36,
       "race": {
         "dotd": 0,
@@ -54,147 +155,45 @@
       }
     },
     {
-      "round": "04",
-      "raceName": "Bahrain",
-      "totalPoints": 22,
-      "race": {
-        "dotd": 0,
-        "position": 8,
-        "qualifyingPosition": 4,
-        "fastestLap": 0,
-        "overtakeBonus": 10
-      }
-    },
-    {
-      "round": "05",
-      "raceName": "Saudi Arabia",
-      "totalPoints": 38,
-      "race": {
-        "dotd": 10,
-        "position": 18,
-        "qualifyingPosition": 10,
-        "fastestLap": 0,
-        "overtakeBonus": 0
-      }
-    },
-    {
-      "round": "06",
-      "raceName": "United States",
-      "totalPoints": 12,
-      "race": {
-        "dotd": 0,
-        "position": 12,
-        "qualifyingPosition": 10,
-        "fastestLap": 0,
-        "overtakeBonus": 1
-      },
-      "sprint": {
-        "position": 0,
-        "qualifyingPosition": 0,
-        "fastestLap": 0,
-        "overtakeBonus": -11
-      }
-    },
-    {
-      "round": "07",
-      "raceName": "Italy",
-      "totalPoints": 57,
-      "race": {
-        "dotd": 10,
-        "position": 25,
-        "qualifyingPosition": 9,
-        "fastestLap": 10,
-        "overtakeBonus": 3
-      }
-    },
-    {
-      "round": "08",
-      "raceName": "Monaco",
-      "totalPoints": 18,
-      "race": {
-        "dotd": 0,
-        "position": 12,
-        "qualifyingPosition": 6,
-        "fastestLap": 0,
-        "overtakeBonus": 0
-      }
-    },
-    {
-      "round": "09",
-      "raceName": "Spain",
-      "totalPoints": 17,
-      "race": {
-        "dotd": 10,
-        "position": 1,
-        "qualifyingPosition": 8,
-        "fastestLap": 0,
-        "overtakeBonus": -2
-      }
-    },
-    {
-      "round": "10",
-      "raceName": "Canada",
-      "totalPoints": 29,
-      "race": {
-        "dotd": 0,
-        "position": 18,
-        "qualifyingPosition": 9,
-        "fastestLap": 0,
-        "overtakeBonus": 2
-      }
-    },
-    {
-      "round": "11",
-      "raceName": "Austria",
-      "totalPoints": -15,
-      "race": {
-        "dotd": 0,
-        "position": 0,
-        "qualifyingPosition": 4,
-        "fastestLap": 0,
-        "overtakeBonus": 1
-      }
-    },
-    {
       "round": "12",
       "raceName": "United Kingdom",
-      "totalPoints": 21,
+      "totalPoints": 37,
       "race": {
         "dotd": 0,
-        "position": 10,
-        "qualifyingPosition": 10,
+        "position": 25,
+        "qualifyingPosition": 8,
         "fastestLap": 0,
-        "overtakeBonus": 1
+        "overtakeBonus": 4
       }
     },
     {
       "round": "13",
       "raceName": "Belgium",
-      "totalPoints": 30,
+      "totalPoints": 39,
       "race": {
         "dotd": 0,
-        "position": 12,
-        "qualifyingPosition": 7,
+        "position": 18,
+        "qualifyingPosition": 10,
         "fastestLap": 0,
-        "overtakeBonus": 1
+        "overtakeBonus": -1
       },
       "sprint": {
-        "position": 8,
+        "position": 6,
         "qualifyingPosition": 0,
-        "fastestLap": 0,
-        "overtakeBonus": 2
+        "fastestLap": 5,
+        "overtakeBonus": 1
       }
     },
     {
       "round": "14",
       "raceName": "Hungary",
-      "totalPoints": 11,
+      "totalPoints": 36,
       "race": {
         "dotd": 0,
-        "position": 2,
-        "qualifyingPosition": 3,
+        "position": 25,
+        "qualifyingPosition": 8,
         "fastestLap": 0,
-        "overtakeBonus": 6
+        "overtakeBonus": 3
       }
     },
     {
@@ -210,5 +209,5 @@
       }
     }
   ],
-  "extractedAt": "2025-08-08T06:22:40.405Z"
+  "extractedAt": "2025-08-08T06:44:03.299Z"
 }

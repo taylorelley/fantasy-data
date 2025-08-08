@@ -15,11 +15,11 @@
  * - Handles sprint weekends automatically
  * - Manages race order dynamically from website
  * 
- * Output Files:
- * Individual Driver Files (driver_data/):
+ * Output Files (exported to versioned folder based on most recent race):
+ * Individual Driver Files ([round]-[raceName]/driver_data/):
  *   - NOR.json, PIA.json, VER.json, etc. (one per driver)
  * 
- * Summary Files (summary_data/):
+ * Summary Files ([round]-[raceName]/summary_data/):
  *   - weekend_summary.json: Points by race for all drivers
  *   - extraction_summary.json: Overall statistics and driver list
  *   - team_summary.json: Data grouped by team
@@ -138,8 +138,12 @@ async function main() {
         console.log(`\n🎉 SCRAPING COMPLETE!`);
         console.log(`📊 Successfully processed ${driverBreakdowns.size} unique drivers`);
         console.log(`🔄 Team swap drivers handled: ${Array.from(driverBreakdowns.values()).filter(d => d.teamSwap).length}`);
-        console.log(`📁 Individual results: ${CONFIG.OUTPUT_DIR}/`);
-        console.log(`📁 Summary data: ${CONFIG.SUMMARY_OUTPUT_DIR}/`);
+        
+        const mostRecentRace = getMostRecentRace();
+        const versionFolder = `${mostRecentRace.round}-${mostRecentRace.raceName}`;
+        console.log(`📁 Results exported to versioned folder: ${versionFolder}/`);
+        console.log(`📁 Individual drivers: ${versionFolder}/driver_data/`);
+        console.log(`📁 Summary data: ${versionFolder}/summary_data/`);
         
     } catch (error) {
         console.error('❌ Scraper failed:', error.message);
@@ -718,22 +722,50 @@ async function emergencyClosePopup(page) {
 /**
  * Save all results to JSON files
  */
+/**
+ * Find the most recent race for versioned export folder naming
+ */
+function getMostRecentRace() {
+    let maxRound = 0;
+    let mostRecentRace = { round: '00', raceName: 'Unknown' };
+    
+    for (const driver of driverBreakdowns.values()) {
+        for (const race of driver.races) {
+            const roundNum = parseInt(race.round);
+            if (roundNum > maxRound) {
+                maxRound = roundNum;
+                mostRecentRace = race;
+            }
+        }
+    }
+    
+    return mostRecentRace;
+}
+
 async function saveResults() {
     console.log('\n💾 Saving results...');
     
+    // Get most recent race for versioned folder naming
+    const mostRecentRace = getMostRecentRace();
+    const versionFolder = `${mostRecentRace.round}-${mostRecentRace.raceName}`;
+    
+    const versionedOutputDir = path.join(versionFolder, 'driver_data');
+    const versionedSummaryDir = path.join(versionFolder, 'summary_data');
+    
+    console.log(`📁 Exporting to versioned folder: ${versionFolder}/`);
+    
     // Clear existing data
     try {
-        await fs.rm(CONFIG.OUTPUT_DIR, { recursive: true, force: true });
-        await fs.rm(CONFIG.SUMMARY_OUTPUT_DIR, { recursive: true, force: true });
+        await fs.rm(versionFolder, { recursive: true, force: true });
     } catch (e) {}
     
-    await fs.mkdir(CONFIG.OUTPUT_DIR, { recursive: true });
-    await fs.mkdir(CONFIG.SUMMARY_OUTPUT_DIR, { recursive: true });
+    await fs.mkdir(versionedOutputDir, { recursive: true });
+    await fs.mkdir(versionedSummaryDir, { recursive: true });
     
     // Save individual driver files using abbreviation.json format
     for (const [driverId, driverData] of driverBreakdowns) {
         const filename = `${driverData.abbreviation}.json`;
-        const filepath = path.join(CONFIG.OUTPUT_DIR, filename);
+        const filepath = path.join(versionedOutputDir, filename);
         
         await fs.writeFile(filepath, JSON.stringify(driverData, null, 2));
         
@@ -760,7 +792,7 @@ async function saveResults() {
         });
     
     await fs.writeFile(
-        path.join(CONFIG.SUMMARY_OUTPUT_DIR, 'weekend_summary.json'), 
+        path.join(versionedSummaryDir, 'weekend_summary.json'), 
         JSON.stringify(sortedSummary, null, 2)
     );
     
@@ -788,7 +820,7 @@ async function saveResults() {
     };
     
     await fs.writeFile(
-        path.join(CONFIG.SUMMARY_OUTPUT_DIR, 'extraction_summary.json'), 
+        path.join(versionedSummaryDir, 'extraction_summary.json'), 
         JSON.stringify(detailedSummary, null, 2)
     );
     
@@ -827,7 +859,7 @@ async function saveResults() {
     });
     
     await fs.writeFile(
-        path.join(CONFIG.SUMMARY_OUTPUT_DIR, 'team_summary.json'), 
+        path.join(versionedSummaryDir, 'team_summary.json'), 
         JSON.stringify(teamSummary, null, 2)
     );
     
@@ -842,7 +874,7 @@ async function saveResults() {
         });
     
     await fs.writeFile(
-        path.join(CONFIG.SUMMARY_OUTPUT_DIR, 'percentage_picked_ranking.json'), 
+        path.join(versionedSummaryDir, 'percentage_picked_ranking.json'), 
         JSON.stringify(percentagePickedRanking, null, 2)
     );
     
