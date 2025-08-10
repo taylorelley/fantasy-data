@@ -138,7 +138,7 @@ async function fixWeekendSummaryOrdering(filePath) {
         
         // Create new object with proper race order
         const sortedData = {};
-        const correctOrder = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13', '14', '15'];
+        const correctOrder = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15'];
         
         // Add races in correct order
         for (const round of correctOrder) {
@@ -168,7 +168,7 @@ async function fixConstructorWeekendSummaryOrdering(filePath) {
         console.log('🔧 Keys in original file:', Object.keys(data).slice(0, 10));
         
         // Create new object with proper race order using Object.fromEntries
-        const correctOrder = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13', '14', '15'];
+        const correctOrder = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15'];
         
         // Build entries array in correct order
         const sortedEntries = correctOrder
@@ -254,9 +254,10 @@ async function main() {
         const mostRecentRace = getMostRecentRace();
         const versionFolder = `${mostRecentRace.round}-${mostRecentRace.raceName}`;
         console.log(`📁 Results exported to versioned folder: ${versionFolder}/`);
-        console.log(`📁 Individual drivers: ${versionFolder}/driver_data/`);
-        console.log(`📁 Individual constructors: ${versionFolder}/constructor_data/`);
-        console.log(`📁 Summary data: ${versionFolder}/summary_data/`);
+        console.log(`📁 Results also exported to latest folder: latest/`);
+        console.log(`📁 Individual drivers: ${versionFolder}/driver_data/ & latest/driver_data/`);
+        console.log(`📁 Individual constructors: ${versionFolder}/constructor_data/ & latest/constructor_data/`);
+        console.log(`📁 Summary data: ${versionFolder}/summary_data/ & latest/summary_data/`);
         
     } catch (error) {
         console.error('❌ Scraper failed:', error.message);
@@ -374,7 +375,7 @@ async function establishRaceOrder(page, driverElements) {
                     
                     if (raceName && raceName !== 'Season') {
                         const raceNameTrimmed = raceName.trim();
-                        const round = String(raceOrder).padStart(2, '0');
+                        const round = String(raceOrder);
                         RACE_ORDER_MAP.set(raceNameTrimmed, round);
                         console.log(`   📅 Round ${round}: ${raceNameTrimmed}`);
                         raceOrder++;
@@ -619,7 +620,7 @@ async function extractDriverDataEnhanced(page, listDriverData) {
             if (raceName === 'Season' || !raceName) continue;
             
             const raceNameTrimmed = raceName.trim();
-            const round = RACE_ORDER_MAP.get(raceNameTrimmed) || '00';
+            const round = RACE_ORDER_MAP.get(raceNameTrimmed) || '0';
             
             const sessionData = await extractSessionDataEnhanced(accordionItem);
             
@@ -634,8 +635,8 @@ async function extractDriverDataEnhanced(page, listDriverData) {
         }
     }
     
-    // Sort races by round number
-    races.sort((a, b) => a.round.localeCompare(b.round));
+    // Sort races by round number (numeric sort)
+    races.sort((a, b) => parseInt(a.round) - parseInt(b.round));
     
     return {
         driverId: basicInfo.driverName.replace(/[^a-z0-9]/g, '_'),
@@ -959,7 +960,7 @@ async function extractConstructorDataEnhanced(page, listConstructorData) {
             if (raceName === 'Season' || !raceName) continue;
             
             const raceNameTrimmed = raceName.trim();
-            const round = RACE_ORDER_MAP.get(raceNameTrimmed) || '00';
+            const round = RACE_ORDER_MAP.get(raceNameTrimmed) || '0';
             
             const sessionData = await extractConstructorSessionData(accordionItem);
             
@@ -974,8 +975,8 @@ async function extractConstructorDataEnhanced(page, listConstructorData) {
         }
     }
     
-    // Sort races by round number
-    races.sort((a, b) => a.round.localeCompare(b.round));
+    // Sort races by round number (numeric sort)
+    races.sort((a, b) => parseInt(a.round) - parseInt(b.round));
     
     return {
         constructorId: basicInfo.constructorName.replace(/[^a-z0-9]/g, '_'),
@@ -1295,7 +1296,7 @@ async function emergencyClosePopup(page) {
  */
 function getMostRecentRace() {
     let maxRound = 0;
-    let mostRecentRace = { round: '00', raceName: 'Unknown' };
+    let mostRecentRace = { round: '0', raceName: 'Unknown' };
     
     for (const driver of driverBreakdowns.values()) {
         for (const race of driver.races) {
@@ -1316,28 +1317,43 @@ async function saveResults() {
     // Get most recent race for versioned folder naming
     const mostRecentRace = getMostRecentRace();
     const versionFolder = `${mostRecentRace.round}-${mostRecentRace.raceName}`;
+    const latestFolder = 'latest';
     
     const versionedOutputDir = path.join(versionFolder, 'driver_data');
     const versionedConstructorDir = path.join(versionFolder, 'constructor_data');
     const versionedSummaryDir = path.join(versionFolder, 'summary_data');
     
-    console.log(`📁 Exporting to versioned folder: ${versionFolder}/`);
+    const latestOutputDir = path.join(latestFolder, 'driver_data');
+    const latestConstructorDir = path.join(latestFolder, 'constructor_data');
+    const latestSummaryDir = path.join(latestFolder, 'summary_data');
     
-    // Clear existing data
+    console.log(`📁 Exporting to versioned folder: ${versionFolder}/`);
+    console.log(`📁 Exporting to latest folder: ${latestFolder}/`);
+    
+    // Clear existing data for both folders
     try {
         await fs.rm(versionFolder, { recursive: true, force: true });
+        await fs.rm(latestFolder, { recursive: true, force: true });
     } catch (e) {}
     
+    // Create both directory structures
     await fs.mkdir(versionedOutputDir, { recursive: true });
     await fs.mkdir(versionedConstructorDir, { recursive: true });
     await fs.mkdir(versionedSummaryDir, { recursive: true });
     
+    await fs.mkdir(latestOutputDir, { recursive: true });
+    await fs.mkdir(latestConstructorDir, { recursive: true });
+    await fs.mkdir(latestSummaryDir, { recursive: true });
+    
     // Save individual driver files using abbreviation.json format
     for (const [driverId, driverData] of driverBreakdowns) {
         const filename = `${driverData.abbreviation}.json`;
-        const filepath = path.join(versionedOutputDir, filename);
+        const versionedFilepath = path.join(versionedOutputDir, filename);
+        const latestFilepath = path.join(latestOutputDir, filename);
         
-        await fs.writeFile(filepath, JSON.stringify(driverData, null, 2));
+        const jsonData = JSON.stringify(driverData, null, 2);
+        await fs.writeFile(versionedFilepath, jsonData);
+        await fs.writeFile(latestFilepath, jsonData);
         
         const swapIndicator = driverData.teamSwap ? ' [TEAM SWAP]' : '';
         console.log(`✅ Saved: ${filename} (${driverData.races.length} races, ${driverData.percentagePicked}% picked)${swapIndicator}`);
@@ -1346,9 +1362,12 @@ async function saveResults() {
     // Save individual constructor files using abbreviation.json format
     for (const [constructorId, constructorData] of constructorBreakdowns) {
         const filename = `${constructorData.abbreviation}.json`;
-        const filepath = path.join(versionedConstructorDir, filename);
+        const versionedFilepath = path.join(versionedConstructorDir, filename);
+        const latestFilepath = path.join(latestConstructorDir, filename);
         
-        await fs.writeFile(filepath, JSON.stringify(constructorData, null, 2));
+        const jsonData = JSON.stringify(constructorData, null, 2);
+        await fs.writeFile(versionedFilepath, jsonData);
+        await fs.writeFile(latestFilepath, jsonData);
         
         console.log(`✅ Saved constructor: ${filename} (${constructorData.races.length} races, ${constructorData.percentagePicked}% picked)`);
     }
@@ -1366,8 +1385,8 @@ async function saveResults() {
     // Hardcoded fix: Sort by round number with explicit handling for 0-prefixed numbers
     const sortedSummary = {};
     
-    // Hardcoded race order - numbers with 0 prefix come before numbers starting with 1
-    const driverRaceOrder = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13', '14', '15'];
+    // Single digit race order for proper chronological sorting
+    const driverRaceOrder = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15'];
     
     // Add races in the correct hardcoded order
     driverRaceOrder.forEach(round => {
@@ -1376,9 +1395,14 @@ async function saveResults() {
         }
     });
     
+    const weekendSummaryJson = JSON.stringify(sortedSummary, null, 2);
     await fs.writeFile(
         path.join(versionedSummaryDir, 'weekend_summary.json'), 
-        JSON.stringify(sortedSummary, null, 2)
+        weekendSummaryJson
+    );
+    await fs.writeFile(
+        path.join(latestSummaryDir, 'weekend_summary.json'), 
+        weekendSummaryJson
     );
     
     console.log('✅ Weekend summary saved: weekend_summary.json');
@@ -1386,6 +1410,7 @@ async function saveResults() {
     // Second pass: manually fix the driver weekend summary file ordering
     console.log('🔧 Second pass: Fixing driver weekend summary file ordering...');
     await fixWeekendSummaryOrdering(path.join(versionedSummaryDir, 'weekend_summary.json'));
+    await fixWeekendSummaryOrdering(path.join(latestSummaryDir, 'weekend_summary.json'));
     
     // Create constructor weekend summary
     const constructorWeekendSummary = {};
@@ -1400,8 +1425,8 @@ async function saveResults() {
     // Final fix: create completely new object with proper ordering
     const sortedConstructorSummary = {};
     
-    // Hardcoded race order - numbers with 0 prefix come before numbers starting with 1  
-    const constructorRaceOrder = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13', '14', '15'];
+    // Single digit race order for proper chronological sorting
+    const constructorRaceOrder = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15'];
     
     // Build new object in correct order by creating entries explicitly
     for (const round of constructorRaceOrder) {
@@ -1412,9 +1437,14 @@ async function saveResults() {
     
     console.log('🔍 Keys should now be in correct order:', Object.keys(sortedConstructorSummary).slice(0, 5));
     
+    const constructorSummaryJson = JSON.stringify(sortedConstructorSummary, null, 2);
     await fs.writeFile(
         path.join(versionedSummaryDir, 'constructor_weekend_summary.json'), 
-        JSON.stringify(sortedConstructorSummary, null, 2)
+        constructorSummaryJson
+    );
+    await fs.writeFile(
+        path.join(latestSummaryDir, 'constructor_weekend_summary.json'), 
+        constructorSummaryJson
     );
     
     console.log('✅ Constructor weekend summary saved: constructor_weekend_summary.json');
@@ -1422,6 +1452,7 @@ async function saveResults() {
     // Second pass: manually fix the constructor weekend summary file ordering
     console.log('🔧 Second pass: Fixing constructor weekend summary file ordering...');
     await fixConstructorWeekendSummaryOrdering(path.join(versionedSummaryDir, 'constructor_weekend_summary.json'));
+    await fixConstructorWeekendSummaryOrdering(path.join(latestSummaryDir, 'constructor_weekend_summary.json'));
     
     // Create comprehensive extraction summary
     const detailedSummary = {
@@ -1455,9 +1486,14 @@ async function saveResults() {
         })).sort((a, b) => a.position - b.position)
     };
     
+    const detailedSummaryJson = JSON.stringify(detailedSummary, null, 2);
     await fs.writeFile(
         path.join(versionedSummaryDir, 'extraction_summary.json'), 
-        JSON.stringify(detailedSummary, null, 2)
+        detailedSummaryJson
+    );
+    await fs.writeFile(
+        path.join(latestSummaryDir, 'extraction_summary.json'), 
+        detailedSummaryJson
     );
     
     console.log('✅ Extraction summary saved: extraction_summary.json');
@@ -1494,9 +1530,14 @@ async function saveResults() {
         teamData.drivers.sort((a, b) => a.position - b.position);
     });
     
+    const teamSummaryJson = JSON.stringify(teamSummary, null, 2);
     await fs.writeFile(
         path.join(versionedSummaryDir, 'team_summary.json'), 
-        JSON.stringify(teamSummary, null, 2)
+        teamSummaryJson
+    );
+    await fs.writeFile(
+        path.join(latestSummaryDir, 'team_summary.json'), 
+        teamSummaryJson
     );
     
     console.log('✅ Team summary saved: team_summary.json');
@@ -1509,9 +1550,14 @@ async function saveResults() {
             percentagePickedRanking[driver.abbreviation] = driver.percentagePicked;
         });
     
+    const percentagePickedJson = JSON.stringify(percentagePickedRanking, null, 2);
     await fs.writeFile(
         path.join(versionedSummaryDir, 'percentage_picked_ranking.json'), 
-        JSON.stringify(percentagePickedRanking, null, 2)
+        percentagePickedJson
+    );
+    await fs.writeFile(
+        path.join(latestSummaryDir, 'percentage_picked_ranking.json'), 
+        percentagePickedJson
     );
     
     console.log('✅ Percentage picked ranking saved: percentage_picked_ranking.json');
@@ -1524,9 +1570,14 @@ async function saveResults() {
             constructorPercentagePickedRanking[constructor.abbreviation] = constructor.percentagePicked;
         });
     
+    const constructorPercentagePickedJson = JSON.stringify(constructorPercentagePickedRanking, null, 2);
     await fs.writeFile(
         path.join(versionedSummaryDir, 'constructor_percentage_picked_ranking.json'), 
-        JSON.stringify(constructorPercentagePickedRanking, null, 2)
+        constructorPercentagePickedJson
+    );
+    await fs.writeFile(
+        path.join(latestSummaryDir, 'constructor_percentage_picked_ranking.json'), 
+        constructorPercentagePickedJson
     );
     
     console.log('✅ Constructor percentage picked ranking saved: constructor_percentage_picked_ranking.json');
