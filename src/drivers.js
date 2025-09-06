@@ -1,5 +1,10 @@
+/* global document */
 const { CONFIG, DRIVER_ABBREVIATIONS, TEAM_SWAP_DRIVERS } = require("./config");
-const { updateSummaryData } = require("./summary");
+const {
+  updateSummaryData,
+  summaryData,
+  constructorSummaryData,
+} = require("./summary");
 const { closePopup, emergencyClosePopup } = require("./utils");
 
 const RACE_ORDER_MAP = new Map();

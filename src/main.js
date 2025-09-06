@@ -8,7 +8,6 @@ const {
   processAllDrivers,
   mergeTeamSwapDrivers,
   driverBreakdowns,
-  RACE_ORDER_MAP,
 } = require("./drivers");
 const {
   extractConstructorListData,
@@ -92,7 +91,9 @@ async function saveResults() {
   try {
     await fs.rm(versionFolder, { recursive: true, force: true });
     await fs.rm(latestFolder, { recursive: true, force: true });
-  } catch (e) {}
+  } catch (e) {
+    console.error("⚠️ Error removing output directories:", e.message);
+  }
 
   await fs.mkdir(versionedOutputDir, { recursive: true });
   await fs.mkdir(versionedConstructorDir, { recursive: true });
@@ -102,7 +103,7 @@ async function saveResults() {
   await fs.mkdir(latestConstructorDir, { recursive: true });
   await fs.mkdir(latestSummaryDir, { recursive: true });
 
-  for (const [driverId, driverData] of driverBreakdowns) {
+  for (const [, driverData] of driverBreakdowns) {
     const filename = `${driverData.abbreviation}.json`;
     const versionedFilepath = path.join(versionedOutputDir, filename);
     const latestFilepath = path.join(latestOutputDir, filename);
@@ -117,7 +118,7 @@ async function saveResults() {
     );
   }
 
-  for (const [constructorId, constructorData] of constructorBreakdowns) {
+  for (const [, constructorData] of constructorBreakdowns) {
     const filename = `${constructorData.abbreviation}.json`;
     const versionedFilepath = path.join(versionedConstructorDir, filename);
     const latestFilepath = path.join(latestConstructorDir, filename);

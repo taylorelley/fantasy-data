@@ -8,7 +8,9 @@ async function closePopup(page) {
       await page.waitForTimeout(CONFIG.DELAYS.POPUP_CLOSE);
       return;
     }
-  } catch (e) {}
+  } catch (e) {
+    // Ignore errors when attempting to close the popup via button
+  }
   await page.keyboard.press("Escape");
   await page.waitForTimeout(CONFIG.DELAYS.POPUP_CLOSE);
 }
@@ -18,7 +20,9 @@ async function emergencyClosePopup(page) {
     await page.keyboard.press("Escape");
     await page.keyboard.press("Escape");
     await page.waitForTimeout(1000);
-  } catch (e) {}
+  } catch (e) {
+    // Ignore errors when attempting emergency close
+  }
 }
 
 module.exports = { closePopup, emergencyClosePopup };

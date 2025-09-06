@@ -1,3 +1,5 @@
+/* eslint-env jest */
+/* global describe, test, expect */
 const fs = require("fs").promises;
 const os = require("os");
 const path = require("path");
