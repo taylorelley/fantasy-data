@@ -5,7 +5,7 @@ const {
   fixWeekendSummaryOrdering,
   fixConstructorWeekendSummaryOrdering,
   getSortedRoundKeys,
-} = require("../fantasy_scraper_V3.1");
+} = require("../src/summary");
 
 describe("ordering utilities", () => {
   test("getSortedRoundKeys sorts numeric keys beyond 15", () => {
