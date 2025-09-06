@@ -51,5 +51,5 @@ debug_*.txt
 debug_*.js
 
 # Output files that shouldn't be tracked (optional - remove if you want to include sample output)
-# driver_data/
-# summary_data/
+driver_data/
+summary_data/
