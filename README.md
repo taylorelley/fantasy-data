@@ -15,6 +15,7 @@ A comprehensive web scraper for extracting F1 Fantasy driver data from the offic
 - **Smart File Organization**: Saves individual files as `{ABBREVIATION}.json` (e.g., `NOR.json`, `TSU.json`)
 - **Comprehensive Summaries**: Multiple summary files for different analysis needs
 - **Dynamic Race Detection**: Automatically determines race order from the website
+- **Structure-Based Row Detection**: Identifies driver and constructor entries by page structure instead of hard-coded name lists
 - **Error Handling**: Robust error handling with popup management and retry logic
 
 ## 🚀 Quick Start
