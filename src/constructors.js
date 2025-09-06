@@ -15,19 +15,6 @@ async function extractConstructorListData(page) {
     'div[class*="si-stats__list-item"]',
   );
   const validConstructors = [];
-  const constructorNames = [
-    "MCLAREN",
-    "RED BULL",
-    "FERRARI",
-    "MERCEDES",
-    "ASTON MARTIN",
-    "ALPINE",
-    "HAAS",
-    "WILLIAMS",
-    "KICK SAUBER",
-    "RB",
-    "RACING BULLS",
-  ];
 
   console.log(`📋 Analyzing ${constructorElements.length} list elements...`);
 
@@ -40,15 +27,14 @@ async function extractConstructorListData(page) {
 
       if (!positionText) continue;
 
-      // Check if this is a constructor row
-      const hasConstructorName = constructorNames.some((name) =>
-        positionText.toUpperCase().includes(name),
-      );
       const positionMatch = positionText.trim().match(/^(\d+)/);
+      const costValid = /\d/.test(costText || "");
+      const pointsValid = /\d/.test(pointsText || "");
+      const namePart = positionText.replace(/^\d+/, "").trim();
 
-      if (hasConstructorName && positionMatch) {
+      if (positionMatch && costValid && pointsValid && namePart) {
         const position = parseInt(positionMatch[1]);
-        const constructorName = positionText.replace(/^\d+/, "").trim();
+        const constructorName = namePart;
 
         const constructorInfo = {
           element: constructorElements[i],

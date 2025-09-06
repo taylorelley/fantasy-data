@@ -21,35 +21,6 @@ async function extractDriverListData(page) {
 
   const driverElements = await page.$$('div[class*="si-stats__list-item"]');
   const validDrivers = [];
-  const driverSurnames = [
-    "NORRIS",
-    "PIASTRI",
-    "VERSTAPPEN",
-    "RUSSELL",
-    "HAMILTON",
-    "LECLERC",
-    "SAINZ",
-    "PEREZ",
-    "ALONSO",
-    "STROLL",
-    "GASLY",
-    "OCON",
-    "HULKENBERG",
-    "MAGNUSSEN",
-    "BOTTAS",
-    "ZHOU",
-    "ALBON",
-    "SARGEANT",
-    "TSUNODA",
-    "RICCIARDO",
-    "ANTONELLI",
-    "BEARMAN",
-    "HADJAR",
-    "BORTOLETO",
-    "LAWSON",
-    "COLAPINTO",
-    "DOOHAN",
-  ];
 
   console.log(`📋 Analyzing ${driverElements.length} list elements...`);
 
@@ -63,15 +34,14 @@ async function extractDriverListData(page) {
 
       if (!positionText) continue;
 
-      // Check if this is a driver row
-      const hasDriverName = driverSurnames.some((surname) =>
-        positionText.includes(surname),
-      );
       const positionMatch = positionText.trim().match(/^(\d+)/);
+      const costValid = /\d/.test(costText || "");
+      const pointsValid = /\d/.test(pointsText || "");
+      const namePart = positionText.replace(/^\d+/, "").trim();
 
-      if (hasDriverName && positionMatch) {
+      if (positionMatch && costValid && pointsValid && namePart) {
         const position = parseInt(positionMatch[1]);
-        const driverName = positionText.replace(/^\d+/, "").trim();
+        const driverName = namePart;
 
         const driverInfo = {
           element: driverElements[i],
