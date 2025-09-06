@@ -1,3 +1,4 @@
+/* global document */
 const { CONFIG, CONSTRUCTOR_ABBREVIATIONS } = require("./config");
 const { updateConstructorSummaryData } = require("./summary");
 const { closePopup, emergencyClosePopup } = require("./utils");
@@ -64,7 +65,7 @@ async function extractConstructorListData(page) {
         // Store in global map for later reference
         const cleanConstructorName = constructorName
           .toLowerCase()
-          .replace(/[\s\-]/g, "");
+          .replace(/[\s-]/g, "");
         constructorListData.set(cleanConstructorName, constructorInfo);
 
         console.log(
@@ -187,7 +188,7 @@ async function extractConstructorDataEnhanced(page, listConstructorData) {
     const playerNameDiv = popup.querySelector(".si-player__name");
     if (playerNameDiv) {
       const playerText = playerNameDiv.textContent.trim();
-      constructorName = playerText.toLowerCase().replace(/[\s\-]/g, "");
+      constructorName = playerText.toLowerCase().replace(/[\s-]/g, "");
     }
 
     // Extract value, season points, and percentage picked
