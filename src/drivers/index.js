@@ -22,15 +22,22 @@ class DriverScraper {
   }
 
   async extractListData(page) {
-    const driverElements = await page.$$('div[class*="si-stats__list-item"]');
+    await page.waitForSelector('[class*="si-stats__list"]');
+    await this._scrollStatsToEnd(page);
+
+    const rowSelector = '[class*="si-stats__row"]';
+    const rows = await page.$$(rowSelector);
     const validDrivers = [];
 
-    for (let i = 0; i < driverElements.length - 3; i += 4) {
+    for (const [index, row] of rows.entries()) {
       try {
-        const positionText = await driverElements[i].textContent();
-        const teamText = await driverElements[i + 1].textContent();
-        const costText = await driverElements[i + 2].textContent();
-        const pointsText = await driverElements[i + 3].textContent();
+        const cells = await row.$$('div[class*="si-stats__list-item"]');
+        if (cells.length < 4) continue;
+
+        const positionText = await cells[0].textContent();
+        const teamText = await cells[1].textContent();
+        const costText = await cells[2].textContent();
+        const pointsText = await cells[3].textContent();
 
         if (!positionText) continue;
 
@@ -43,8 +50,8 @@ class DriverScraper {
           const position = parseInt(positionMatch[1]);
           const driverName = namePart;
           const driverInfo = {
-            element: driverElements[i],
-            index: i,
+            element: row,
+            index,
             position,
             name: driverName,
             team: teamText?.trim() || "Unknown",
@@ -54,14 +61,30 @@ class DriverScraper {
           };
           validDrivers.push(driverInfo);
           const cleanDriverName =
-            driverName.toLowerCase().replace(/\s+/g, "") + "driver";
+            driverName.toLowerCase().replace(/[^a-z0-9]/gi, "") + "driver";
           this.driverListData.set(cleanDriverName, driverInfo);
         }
-      } catch (err) {
+      } catch (_) {
         continue;
       }
     }
     return validDrivers;
+  }
+
+  async _scrollStatsToEnd(page) {
+    const rowSelector = '[class*="si-stats__row"]';
+    let lastCount = 0;
+    for (let i = 0; i < 20; i++) {
+      const rows = await page.$$(rowSelector);
+      const count = rows.length;
+      if (count <= lastCount) break;
+      lastCount = count;
+      await page.evaluate(() => {
+        // eslint-disable-next-line no-undef
+        window.scrollBy(0, window.innerHeight);
+      });
+      await page.waitForTimeout(200);
+    }
   }
 
   async establishRaceOrder(page, driverElements) {
@@ -183,7 +206,7 @@ class DriverScraper {
       }
 
       const driverId =
-        driverData.name.toLowerCase().replace(/\s+/g, "") + "driver";
+        driverData.name.toLowerCase().replace(/[^a-z0-9]/gi, "") + "driver";
       const abbreviation =
         DRIVER_ABBREVIATIONS[driverId] ||
         driverData.name.slice(0, 3).toUpperCase();
@@ -262,31 +285,33 @@ class DriverScraper {
     }
 
     try {
-      const tables = await raceElement.$$("table.si-tbl");
-      for (const table of tables) {
-        const rows = await table.$$("tbody tr");
-        for (const row of rows) {
-          const cells = await row.$$("td");
-          if (cells.length >= 3) {
-            const eventName = await cells[0].textContent();
-            const pointsText = await cells[2].textContent();
-            const isNegative = await cells[2].evaluate((cell) =>
-              cell.classList.contains("si-negative"),
-            );
-            let points = 0;
-            if (pointsText && pointsText.trim() !== "-") {
-              const pointsMatch = pointsText.match(/(-?)(\d+)/);
-              if (pointsMatch) {
-                points = parseInt(pointsMatch[2]);
-                if (isNegative || pointsMatch[1] === "-") {
-                  points = -Math.abs(points);
-                }
-              }
-            }
-            if (eventName) {
-              applyEvent(sessionData, eventName, points, DRIVER_EVENT_MAP);
+      const rowSelectors = [
+        "table.si-tbl tbody tr",
+        '[role="row"]',
+        '[class*="si-table__row"]',
+      ].join(", ");
+      const rows = await raceElement.$$(rowSelectors);
+      for (const row of rows) {
+        const cells = await row.$$(":scope > *");
+        if (cells.length < 2) continue;
+        const eventName = await cells[0].textContent();
+        const pointsCell = cells[cells.length - 1];
+        const pointsText = await pointsCell.textContent();
+        const isNegative = await pointsCell.evaluate((cell) =>
+          cell.classList.contains("si-negative"),
+        );
+        let points = 0;
+        if (pointsText && pointsText.trim() !== "-") {
+          const match = pointsText.match(/(-?)(\d+)/);
+          if (match) {
+            points = parseInt(match[2]);
+            if (isNegative || match[1] === "-") {
+              points = -Math.abs(points);
             }
           }
+        }
+        if (eventName) {
+          applyEvent(sessionData, eventName, points, DRIVER_EVENT_MAP);
         }
       }
     } catch (error) {

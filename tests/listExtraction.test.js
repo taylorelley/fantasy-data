@@ -1,5 +1,5 @@
 /* eslint-env jest */
-/* global describe, test, expect, beforeEach */
+/* global describe, test, expect, beforeEach, jest */
 const { DriverScraper } = require("../src/drivers");
 const { ConstructorScraper } = require("../src/constructors");
 
@@ -22,19 +22,36 @@ describe("list data extraction", () => {
   });
 
   test("extractDriverListData detects driver rows based on structure", async () => {
-    const elements = [
-      createElement("1 Random Driver"),
-      createElement("Some Team"),
-      createElement("20.0"),
-      createElement("100"),
+    const createRow = (posName, team, cost, points) => ({
+      $$() {
+        return Promise.resolve([
+          createElement(posName),
+          createElement(team),
+          createElement(cost),
+          createElement(points),
+        ]);
+      },
+    });
+
+    const rows = [
+      createRow("1 Random Driver", "Some Team", "20.0", "100"),
       // invalid row missing cost
-      createElement("2 Another Driver"),
-      createElement("Other Team"),
-      createElement(""),
-      createElement("90"),
+      createRow("2 Another Driver", "Other Team", "", "90"),
     ];
-    const page = { $$: async () => elements };
+
+    const page = {
+      waitForSelector: jest.fn().mockResolvedValue(null),
+      $$() {
+        return Promise.resolve(rows);
+      },
+    };
+
+    jest
+      .spyOn(DriverScraper.prototype, "_scrollStatsToEnd")
+      .mockResolvedValue(undefined);
+
     const drivers = await driverScraper.extractListData(page);
+
     expect(drivers).toHaveLength(1);
     expect(drivers[0].name).toBe("Random Driver");
   });

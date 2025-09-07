@@ -164,4 +164,32 @@ describe("enhanced data extraction", () => {
     expect(result.seasonTotalPoints).toBe(40);
     expect(result.percentagePicked).toBe(80);
   });
+
+  test("extractSessionDataEnhanced parses rows with negative points", async () => {
+    const scraper = new DriverScraper();
+
+    const makeRow = (event, pts, neg = false) => ({
+      $$: jest.fn().mockResolvedValue([
+        { textContent: async () => event },
+        {
+          textContent: async () => String(pts),
+          evaluate: async (fn) => fn({ classList: { contains: () => neg } }),
+        },
+      ]),
+    });
+
+    const raceElement = {
+      $: jest.fn().mockResolvedValue(null),
+      $$: jest
+        .fn()
+        .mockResolvedValue([
+          makeRow("Race position", 15),
+          makeRow("Race disqualified", 5, true),
+        ]),
+    };
+
+    const session = await scraper.extractSessionDataEnhanced(raceElement);
+    expect(session.race.position).toBe(15);
+    expect(session.race.disqualificationPenalty).toBe(-5);
+  });
 });
