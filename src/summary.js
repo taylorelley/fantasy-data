@@ -1,5 +1,9 @@
 const fs = require("fs").promises;
 
+// Capture the DEBUG flag at module load time so later changes to
+// process.env.DEBUG by dependencies don't affect logging behavior.
+const DEBUG_ENABLED = process.env.DEBUG === "true";
+
 const summaryData = new Map();
 const constructorSummaryData = new Map();
 
@@ -45,7 +49,7 @@ async function fixWeekendSummaryOrdering(filePath) {
  */
 async function fixConstructorWeekendSummaryOrdering(
   filePath,
-  debug = process.env.DEBUG === "true",
+  debug = DEBUG_ENABLED,
 ) {
   try {
     const fileContent = await fs.readFile(filePath, "utf8");
