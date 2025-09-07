@@ -98,7 +98,11 @@ function applyDriverEvent(sessionData, eventName, points) {
 }
 
 /**
- * Extract comprehensive driver data from main list including teams, positions, costs
+ * Extract comprehensive driver data from the main driver list including
+ * teams, positions, costs and points.
+ *
+ * @param {import('playwright').Page} page Playwright page instance to scrape from
+ * @returns {Promise<Array<object>>} Array of driver metadata objects
  */
 async function extractDriverListData(page) {
   console.log("🔍 Extracting driver list data with teams...");
@@ -162,7 +166,12 @@ async function extractDriverListData(page) {
 }
 
 /**
- * Establish race order from website to maintain correct chronological order
+ * Establish race order by inspecting driver popups to determine
+ * the chronological round number for each event.
+ *
+ * @param {import('playwright').Page} page Playwright page instance
+ * @param {Array<object>} driverElements Array of driver metadata objects
+ * @returns {Promise<number>} Index of the driver used to determine race order
  */
 async function establishRaceOrder(page, driverElements) {
   try {
@@ -252,7 +261,13 @@ async function establishRaceOrder(page, driverElements) {
 }
 
 /**
- * Process all drivers including team swap handling
+ * Process all drivers on the page, capturing statistics and handling
+ * drivers who have switched teams during the season.
+ *
+ * @param {import('playwright').Page} page Playwright page instance
+ * @param {Array<object>} driverElements Array of driver metadata objects
+ * @param {number} [raceOrderDriverIndex=-1] Index of driver used for race order
+ * @returns {Promise<void>} Resolves when all drivers have been processed
  */
 async function processAllDrivers(
   page,
@@ -286,7 +301,12 @@ async function processAllDrivers(
 }
 
 /**
- * Process individual driver data extraction
+ * Process data extraction for a single driver.
+ *
+ * @param {import('playwright').Page} page Playwright page instance
+ * @param {object} driverData Metadata about the driver being processed
+ * @param {number} index Index of the driver in the list
+ * @returns {Promise<void>} Resolves when the driver has been processed
  */
 async function processDriver(page, driverData, index) {
   try {
@@ -502,7 +522,10 @@ async function extractDriverDataEnhanced(page, listDriverData) {
 }
 
 /**
- * Merge data for drivers who switched teams mid-season
+ * Merge data for drivers who switched teams mid-season, combining
+ * multiple versions of the same driver into a single entry.
+ *
+ * @returns {Promise<void>} Resolves when merging is complete
  */
 async function mergeTeamSwapDrivers() {
   console.log(`\n🔄 Merging team swap drivers...`);
@@ -607,7 +630,11 @@ async function mergeTeamSwapDrivers() {
 }
 
 /**
- * Extract session data for races and sprints
+ * Extract detailed session data for a given race element including
+ * qualifying, sprint and race results.
+ *
+ * @param {import('playwright').ElementHandle} raceElement DOM element for a race
+ * @returns {Promise<object>} Structured session data
  */
 async function extractSessionDataEnhanced(raceElement) {
   const sessionData = {
