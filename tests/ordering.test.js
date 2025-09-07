@@ -1,5 +1,5 @@
 /* eslint-env jest */
-/* global describe, test, expect */
+/* global describe, test, expect, jest */
 const fs = require("fs").promises;
 const os = require("os");
 const path = require("path");
@@ -39,9 +39,41 @@ describe("ordering utilities", () => {
       16: { raceName: "R16" },
       5: { raceName: "R5" },
     };
+    const spy = jest.spyOn(console, "log").mockImplementation(() => {});
     await fs.writeFile(file, JSON.stringify(data));
     await fixConstructorWeekendSummaryOrdering(file);
     const sorted = JSON.parse(await fs.readFile(file, "utf8"));
     expect(Object.keys(sorted)).toEqual(["1", "5", "16", "20"]);
+    expect(spy.mock.calls).toEqual([
+      ["✅ Constructor weekend summary file ordering fixed"],
+    ]);
+    spy.mockRestore();
+  });
+
+  test("fixConstructorWeekendSummaryOrdering logs when debug is enabled", async () => {
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "constructor-"));
+    const file = path.join(tempDir, "constructor.json");
+    const data = {
+      20: { raceName: "R20" },
+      1: { raceName: "R1" },
+      16: { raceName: "R16" },
+      5: { raceName: "R5" },
+    };
+    const spy = jest.spyOn(console, "log").mockImplementation(() => {});
+    await fs.writeFile(file, JSON.stringify(data));
+    await fixConstructorWeekendSummaryOrdering(file, true);
+    const sorted = JSON.parse(await fs.readFile(file, "utf8"));
+    expect(Object.keys(sorted)).toEqual(["1", "5", "16", "20"]);
+    const messages = spy.mock.calls.map((call) => call[0]);
+    expect(messages).toContainEqual(
+      expect.stringContaining("Keys in original file"),
+    );
+    expect(messages).toContainEqual(
+      expect.stringContaining("Keys in sorted data"),
+    );
+    expect(messages).toContain(
+      "✅ Constructor weekend summary file ordering fixed",
+    );
+    spy.mockRestore();
   });
 });

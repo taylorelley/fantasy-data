@@ -65,6 +65,15 @@ npm run lint
 npm test
 ```
 
+### Debug logging
+
+Verbose logging for some utilities can be toggled with a `DEBUG` flag. Set it to `true` to print additional output, for example:
+
+```
+DEBUG=true node src/main.js
+```
+
+This currently enables extra information from `fixConstructorWeekendSummaryOrdering`.
 
 ## Contributing
 
