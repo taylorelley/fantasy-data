@@ -1,81 +1,68 @@
 /* eslint-env jest */
 /* global jest, describe, test, expect */
-const { closePopup, emergencyClosePopup } = require("../src/utils");
-const { CONFIG } = require("../src/config");
+const { closeCookieBanner, emergencyClosePopup } = require("../src/utils");
 
-describe("closePopup", () => {
-  test("clicks essential cookies button when available", async () => {
+describe("closeCookieBanner", () => {
+  test("clicks reject button in Sourcepoint iframe", async () => {
     const click = jest.fn();
+    const btn = { waitFor: jest.fn().mockResolvedValue(), click };
+    const locator = { first: jest.fn(() => btn) };
+    const spFrame = { getByRole: jest.fn(() => locator) };
     const page = {
-      $$: jest
-        .fn()
-        .mockResolvedValue([
-          {
-            textContent: jest
-              .fn()
-              .mockResolvedValue("Use essential cookies only"),
-            click,
-          },
-        ]),
-      $: jest.fn(),
-      keyboard: { press: jest.fn() },
+      frameLocator: jest.fn().mockReturnValue(spFrame),
       waitForTimeout: jest.fn(),
+      keyboard: { press: jest.fn() },
     };
 
-    await closePopup(page);
+    await closeCookieBanner(page);
 
-    expect(page.$$).toHaveBeenCalledWith("button");
+    expect(page.frameLocator).toHaveBeenCalledWith(
+      'iframe[title*="SP Consent" i], iframe[id^="sp_message_iframe"]',
+    );
+    expect(spFrame.getByRole).toHaveBeenCalledWith(
+      "button",
+      expect.objectContaining({ name: expect.any(RegExp), exact: false }),
+    );
+    expect(btn.waitFor).toHaveBeenCalled();
     expect(click).toHaveBeenCalled();
-    expect(page.$).not.toHaveBeenCalled();
+    expect(page.waitForTimeout).toHaveBeenCalled();
     expect(page.keyboard.press).not.toHaveBeenCalled();
-    expect(page.waitForTimeout).toHaveBeenCalledWith(CONFIG.DELAYS.POPUP_CLOSE);
   });
 
-  test("clicks close button when available", async () => {
-    const click = jest.fn();
+  test("presses escape twice when no banner found", async () => {
+    const failingBtn = {
+      waitFor: jest.fn().mockRejectedValue(new Error("nope")),
+      click: jest.fn(),
+    };
+    const failingLocator = {
+      first: jest.fn(() => failingBtn),
+      isVisible: jest.fn().mockRejectedValue(new Error("no")),
+    };
+    const failingFrame = {
+      getByRole: jest.fn(() => failingLocator),
+      locator: jest.fn(() => ({
+        first: () => ({
+          isVisible: jest.fn().mockRejectedValue(new Error("no")),
+        }),
+      })),
+    };
     const page = {
-      $$: jest.fn().mockResolvedValue([]),
-      $: jest.fn().mockResolvedValue({ click }),
-      keyboard: { press: jest.fn() },
+      frameLocator: jest.fn().mockReturnValue(failingFrame),
+      locator: jest.fn(() => ({
+        first: () => ({
+          isVisible: jest.fn().mockRejectedValue(new Error("no")),
+        }),
+      })),
+      getByRole: jest.fn(() => failingLocator),
       waitForTimeout: jest.fn(),
+      keyboard: { press: jest.fn() },
     };
 
-    await closePopup(page);
+    await closeCookieBanner(page);
 
-    expect(page.$).toHaveBeenCalledWith(".si-popup__close");
-    expect(click).toHaveBeenCalled();
-    expect(page.keyboard.press).not.toHaveBeenCalled();
-    expect(page.waitForTimeout).toHaveBeenCalledWith(CONFIG.DELAYS.POPUP_CLOSE);
-  });
-
-  test("presses escape when close button missing", async () => {
-    const page = {
-      $$: jest.fn().mockResolvedValue([]),
-      $: jest.fn().mockResolvedValue(null),
-      keyboard: { press: jest.fn() },
-      waitForTimeout: jest.fn(),
-    };
-
-    await closePopup(page);
-
-    expect(page.$).toHaveBeenCalledWith(".si-popup__close");
+    expect(page.keyboard.press).toHaveBeenCalledTimes(2);
     expect(page.keyboard.press).toHaveBeenCalledWith("Escape");
-    expect(page.waitForTimeout).toHaveBeenCalledWith(CONFIG.DELAYS.POPUP_CLOSE);
-  });
-
-  test("presses escape when querying close button fails", async () => {
-    const page = {
-      $$: jest.fn().mockResolvedValue([]),
-      $: jest.fn().mockRejectedValue(new Error("fail")),
-      keyboard: { press: jest.fn() },
-      waitForTimeout: jest.fn(),
-    };
-
-    await closePopup(page);
-
-    expect(page.$).toHaveBeenCalled();
-    expect(page.keyboard.press).toHaveBeenCalledWith("Escape");
-    expect(page.waitForTimeout).toHaveBeenCalledWith(CONFIG.DELAYS.POPUP_CLOSE);
+    expect(page.waitForTimeout).toHaveBeenCalled();
   });
 });
 
