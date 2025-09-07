@@ -83,10 +83,23 @@ class DriverScraper {
           raceOrder++;
         }
       }
-      await popup.$eval("button.si-popup__close", (btn) => btn.click());
+      const closeBtn = await popup.$(
+        'button.si-popup__close, button[aria-label*="close" i]',
+      );
+      if (closeBtn) {
+        await closeBtn.click();
+      } else {
+        await page.keyboard.press("Escape");
+      }
       await page.waitForTimeout(CONFIG.DELAYS.POPUP_CLOSE);
     } catch (err) {
       console.log(`⚠️  Unable to establish race order: ${err.message}`);
+      try {
+        await page.keyboard.press("Escape");
+        await page.waitForTimeout(CONFIG.DELAYS.POPUP_CLOSE);
+      } catch (_) {
+        /* ignore */
+      }
     }
   }
 
