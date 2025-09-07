@@ -4,20 +4,59 @@ const { closePopup, emergencyClosePopup } = require("../src/utils");
 const { CONFIG } = require("../src/config");
 
 describe("closePopup", () => {
+  test("handles manage settings cookie modal", async () => {
+    const manageClick = jest.fn();
+    const rejectClick = jest.fn();
+    const page = {
+      $$: jest.fn().mockResolvedValue([]),
+      $: jest.fn().mockImplementation((selector) => {
+        if (
+          selector ===
+          'h2:has-text("YOUR CHOICES REGARDING COOKIES ON THIS SITE")'
+        ) {
+          return Promise.resolve({});
+        }
+        if (selector === 'button[aria-label="No, manage settings"]') {
+          return Promise.resolve({ click: manageClick });
+        }
+        if (selector === 'button[aria-label="Reject all"]') {
+          return Promise.resolve({ click: rejectClick });
+        }
+        if (selector === ".si-popup__close") {
+          return Promise.resolve(null);
+        }
+        return Promise.resolve(null);
+      }),
+      waitForSelector: jest.fn().mockResolvedValue(),
+      keyboard: { press: jest.fn() },
+      waitForTimeout: jest.fn(),
+    };
+
+    await closePopup(page);
+
+    expect(page.$).toHaveBeenCalledWith(
+      'h2:has-text("YOUR CHOICES REGARDING COOKIES ON THIS SITE")',
+    );
+    expect(manageClick).toHaveBeenCalled();
+    expect(page.waitForSelector).toHaveBeenCalledWith(
+      'h2:has-text("MANAGE YOUR CHOICES")',
+      { timeout: CONFIG.DELAYS.POPUP_WAIT },
+    );
+    expect(rejectClick).toHaveBeenCalled();
+    expect(page.waitForTimeout).toHaveBeenCalledWith(CONFIG.DELAYS.POPUP_CLOSE);
+  });
   test("clicks essential cookies button when available", async () => {
     const click = jest.fn();
     const page = {
-      $$: jest
-        .fn()
-        .mockResolvedValue([
-          {
-            textContent: jest
-              .fn()
-              .mockResolvedValue("Use essential cookies only"),
-            click,
-          },
-        ]),
-      $: jest.fn(),
+      $$: jest.fn().mockResolvedValue([
+        {
+          textContent: jest
+            .fn()
+            .mockResolvedValue("Use essential cookies only"),
+          click,
+        },
+      ]),
+      $: jest.fn().mockResolvedValue(null),
       keyboard: { press: jest.fn() },
       waitForTimeout: jest.fn(),
     };
@@ -26,7 +65,6 @@ describe("closePopup", () => {
 
     expect(page.$$).toHaveBeenCalledWith("button");
     expect(click).toHaveBeenCalled();
-    expect(page.$).not.toHaveBeenCalled();
     expect(page.keyboard.press).not.toHaveBeenCalled();
     expect(page.waitForTimeout).toHaveBeenCalledWith(CONFIG.DELAYS.POPUP_CLOSE);
   });
@@ -35,7 +73,12 @@ describe("closePopup", () => {
     const click = jest.fn();
     const page = {
       $$: jest.fn().mockResolvedValue([]),
-      $: jest.fn().mockResolvedValue({ click }),
+      $: jest.fn().mockImplementation((selector) => {
+        if (selector === ".si-popup__close") {
+          return Promise.resolve({ click });
+        }
+        return Promise.resolve(null);
+      }),
       keyboard: { press: jest.fn() },
       waitForTimeout: jest.fn(),
     };
