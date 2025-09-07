@@ -4,7 +4,7 @@ const path = require("path");
 const { CONFIG } = require("./config");
 const { DriverScraper } = require("./drivers");
 const { ConstructorScraper } = require("./constructors");
-const { closePopup } = require("./utils");
+const { closePopup, handleCookieConsent } = require("./utils");
 
 // Instantiate scrapers so their internal data structures can be reused
 const driverScraper = new DriverScraper();
@@ -34,6 +34,7 @@ async function main() {
     console.log(`📊 Target: ${CONFIG.DRIVER_URL}`);
     await page.goto(CONFIG.DRIVER_URL, { waitUntil: "load" });
     await page.waitForTimeout(CONFIG.DELAYS.PAGE_LOAD);
+    await handleCookieConsent(page);
     await closePopup(page);
 
     const driverElements = await driverScraper.extractListData(page);
@@ -42,6 +43,7 @@ async function main() {
     console.log(`📊 Target: ${CONFIG.CONSTRUCTOR_URL}`);
     await page.goto(CONFIG.CONSTRUCTOR_URL, { waitUntil: "load" });
     await page.waitForTimeout(CONFIG.DELAYS.PAGE_LOAD);
+    await handleCookieConsent(page);
     await closePopup(page);
 
     const constructorElements = await constructorScraper.extractListData(page);
