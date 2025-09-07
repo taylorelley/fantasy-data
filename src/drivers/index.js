@@ -1,4 +1,8 @@
-const { CONFIG, DRIVER_ABBREVIATIONS } = require("../config");
+const {
+  CONFIG,
+  DRIVER_ABBREVIATIONS,
+  TEAM_SWAP_DRIVERS,
+} = require("../config");
 const { updateSummaryData } = require("../summary");
 const { emergencyClosePopup } = require("../utils");
 const { applyEvent } = require("../eventMapper");
@@ -126,25 +130,84 @@ class DriverScraper {
       index,
     );
     if (!enhanced) return;
-    this.driverBreakdowns.set(enhanced.driverId, enhanced);
-    this.processedDrivers.add(enhanced.driverId);
+
+    const driverId = enhanced.driverId;
+
+    if (TEAM_SWAP_DRIVERS[driverId]) {
+      if (!this.teamSwapData.has(driverId)) {
+        this.teamSwapData.set(driverId, []);
+      }
+      this.teamSwapData.get(driverId).push(enhanced);
+      return;
+    }
+
+    if (this.processedDrivers.has(driverId)) return;
+
+    this.driverBreakdowns.set(driverId, enhanced);
+    this.processedDrivers.add(driverId);
     updateSummaryData(enhanced);
   }
 
   async mergeTeamSwapDrivers() {
-    // Simplified merge logic
-    for (const [baseId, swapId] of Object.entries({})) {
-      if (
-        this.driverBreakdowns.has(baseId) &&
-        this.driverBreakdowns.has(swapId)
-      ) {
-        const base = this.driverBreakdowns.get(baseId);
-        const swap = this.driverBreakdowns.get(swapId);
-        base.teams = Array.from(new Set([...base.teams, ...swap.teams]));
-        base.races.push(...swap.races);
-        base.races.sort((a, b) => a.round.localeCompare(b.round));
-        this.driverBreakdowns.delete(swapId);
+    for (const [driverId, versions] of this.teamSwapData) {
+      if (versions.length < 2) {
+        const only = versions[0];
+        if (only) {
+          this.driverBreakdowns.set(driverId, only);
+          updateSummaryData(only);
+        }
+        continue;
       }
+
+      versions.sort((a, b) => a.position - b.position);
+      const mainVersion = versions[0];
+
+      const merged = {
+        driverId,
+        abbreviation: mainVersion.abbreviation,
+        displayName: mainVersion.displayName,
+        team: mainVersion.team,
+        position: mainVersion.position,
+        value: mainVersion.value,
+        percentagePicked: mainVersion.percentagePicked,
+        teamSwap: true,
+        teams: versions.map((v) => v.team).filter((team) => team !== "Unknown"),
+        teamSwapDetails: versions.map((v) => ({
+          team: v.team,
+          position: v.position,
+          value: v.value,
+          points: v.seasonTotalPoints,
+        })),
+        seasonTotalPoints: versions.reduce(
+          (sum, v) => sum + (v.seasonTotalPoints || 0),
+          0,
+        ),
+        races: [],
+        extractedAt: new Date().toISOString(),
+        versions: versions.length,
+      };
+
+      const raceMap = new Map();
+      for (const version of versions) {
+        for (const race of version.races) {
+          const key = `${race.round}-${race.raceName}`;
+          if (!raceMap.has(key)) {
+            raceMap.set(key, { ...race, team: version.team });
+          } else {
+            const existing = raceMap.get(key);
+            if (Math.abs(race.totalPoints) > Math.abs(existing.totalPoints)) {
+              raceMap.set(key, { ...race, team: version.team });
+            }
+          }
+        }
+      }
+
+      merged.races = Array.from(raceMap.values()).sort((a, b) =>
+        a.round.localeCompare(b.round),
+      );
+
+      this.driverBreakdowns.set(driverId, merged);
+      updateSummaryData(merged);
     }
   }
 
