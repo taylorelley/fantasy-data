@@ -38,6 +38,12 @@ async function main() {
 
     const driverElements = await driverScraper.extractListData(page);
     await driverScraper.processAll(page, driverElements);
+    const driverMap = driverScraper.getBreakdowns();
+    console.log(`👥 Driver count: ${driverMap.size}`);
+    console.log(
+      "🔍 Sample drivers:",
+      Array.from(driverMap.values()).slice(0, 3),
+    );
 
     console.log(`📊 Target: ${CONFIG.CONSTRUCTOR_URL}`);
     await page.goto(CONFIG.CONSTRUCTOR_URL, { waitUntil: "load" });

@@ -41,8 +41,9 @@ function createRaceElement(rows, sprint = false) {
   };
   return {
     async $$(selector) {
-      if (selector === "table.si-tbl") return [table];
-      return [];
+      if (selector && selector.includes("table.si-tbl tbody tr")) return rows;
+      if (selector && selector.includes("table.si-tbl")) return [table];
+      return rows;
     },
     async $(selector) {
       if (selector === '.si-tabs__wrap button:has-text("Sprint")')
