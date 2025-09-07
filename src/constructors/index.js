@@ -1,4 +1,4 @@
-const { CONFIG } = require("../config");
+const { CONFIG, CONSTRUCTOR_ABBREVIATIONS } = require("../config");
 const { updateConstructorSummaryData } = require("../summary");
 const { emergencyClosePopup } = require("../utils");
 const { applyEvent } = require("../eventMapper");
@@ -83,8 +83,83 @@ class ConstructorScraper {
     updateConstructorSummaryData(enhanced);
   }
 
-  async extractConstructorDataEnhanced() {
-    throw new Error("extractConstructorDataEnhanced not implemented");
+  async extractConstructorDataEnhanced(page, constructorData, index) {
+    try {
+      await constructorData.element.click();
+      await page.waitForSelector(".si-popup__container", {
+        timeout: CONFIG.DELAYS.POPUP_WAIT,
+      });
+      const popup = await page.$(".si-popup__container");
+      if (!popup) return null;
+
+      let percentagePicked = 0;
+      const pctEl = await popup.$(".si-popup__percentage");
+      if (pctEl) {
+        const pctText = await pctEl.textContent();
+        const match = pctText && pctText.match(/(\d+)/);
+        if (match) percentagePicked = parseInt(match[1]);
+      }
+
+      const races = [];
+      const accordionItems = await popup.$$(".si-accordion__box");
+      for (const item of accordionItems) {
+        const titleEl = await item.$(".si-league__card-title span");
+        const raceName = (await titleEl?.textContent())?.trim();
+        if (!raceName || raceName === "Season") continue;
+
+        const totalEl = await item.$(".si-league__card-total, .si-value__box");
+        const totalText = await totalEl?.textContent();
+        const pointsMatch = totalText && totalText.match(/-?\d+/);
+        const totalPoints = pointsMatch ? parseInt(pointsMatch[0]) : 0;
+
+        const round = this.RACE_ORDER_MAP.get(raceName) || String(index + 1);
+        const sessionData = await this.extractConstructorSessionData(item);
+        races.push({ round, raceName, totalPoints, ...sessionData });
+      }
+
+      const constructorId = constructorData.name
+        .toLowerCase()
+        .replace(/[\s-]/g, "");
+      const abbreviation =
+        CONSTRUCTOR_ABBREVIATIONS[constructorId] ||
+        constructorData.name.slice(0, 3).toUpperCase();
+      const seasonTotalPoints = races.reduce(
+        (sum, r) => sum + (r.totalPoints || 0),
+        0,
+      );
+      const result = {
+        constructorId,
+        name: constructorData.name,
+        abbreviation,
+        position: constructorData.position,
+        value: constructorData.cost,
+        percentagePicked,
+        races,
+        seasonTotalPoints,
+        extractedAt: new Date().toISOString(),
+      };
+
+      const closeBtn = await popup.$(
+        'button.si-popup__close, button[aria-label*="close" i]',
+      );
+      if (closeBtn) {
+        await closeBtn.click();
+      } else {
+        await page.keyboard.press("Escape");
+      }
+      await page.waitForTimeout(CONFIG.DELAYS.POPUP_CLOSE);
+
+      return result;
+    } catch (error) {
+      console.log(`⚠️  Error extracting constructor data: ${error.message}`);
+      try {
+        await page.keyboard.press("Escape");
+        await page.waitForTimeout(CONFIG.DELAYS.POPUP_CLOSE);
+      } catch (_) {
+        /* ignore */
+      }
+      return null;
+    }
   }
 
   async extractConstructorSessionData(raceElement) {

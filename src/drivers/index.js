@@ -1,4 +1,4 @@
-const { CONFIG } = require("../config");
+const { CONFIG, DRIVER_ABBREVIATIONS } = require("../config");
 const { updateSummaryData } = require("../summary");
 const { emergencyClosePopup } = require("../utils");
 const { applyEvent } = require("../eventMapper");
@@ -148,8 +148,84 @@ class DriverScraper {
     }
   }
 
-  async extractDriverDataEnhanced() {
-    throw new Error("extractDriverDataEnhanced not implemented");
+  async extractDriverDataEnhanced(page, driverData, index) {
+    try {
+      await driverData.element.click();
+      await page.waitForSelector(".si-popup__container", {
+        timeout: CONFIG.DELAYS.POPUP_WAIT,
+      });
+      const popup = await page.$(".si-popup__container");
+      if (!popup) return null;
+
+      let percentagePicked = 0;
+      const pctEl = await popup.$(".si-popup__percentage");
+      if (pctEl) {
+        const pctText = await pctEl.textContent();
+        const match = pctText && pctText.match(/(\d+)/);
+        if (match) percentagePicked = parseInt(match[1]);
+      }
+
+      const races = [];
+      const accordionItems = await popup.$$(".si-accordion__box");
+      for (const item of accordionItems) {
+        const titleEl = await item.$(".si-league__card-title span");
+        const raceName = (await titleEl?.textContent())?.trim();
+        if (!raceName || raceName === "Season") continue;
+
+        const totalEl = await item.$(".si-league__card-total, .si-value__box");
+        const totalText = await totalEl?.textContent();
+        const pointsMatch = totalText && totalText.match(/-?\d+/);
+        const totalPoints = pointsMatch ? parseInt(pointsMatch[0]) : 0;
+
+        const round = this.RACE_ORDER_MAP.get(raceName) || String(index + 1);
+        const sessionData = await this.extractSessionDataEnhanced(item);
+        races.push({ round, raceName, totalPoints, ...sessionData });
+      }
+
+      const driverId =
+        driverData.name.toLowerCase().replace(/\s+/g, "") + "driver";
+      const abbreviation =
+        DRIVER_ABBREVIATIONS[driverId] ||
+        driverData.name.slice(0, 3).toUpperCase();
+      const seasonTotalPoints = races.reduce(
+        (sum, r) => sum + (r.totalPoints || 0),
+        0,
+      );
+      const result = {
+        driverId,
+        abbreviation,
+        displayName: driverData.name,
+        team: driverData.team,
+        value: driverData.cost,
+        percentagePicked,
+        position: driverData.position,
+        races,
+        seasonTotalPoints,
+        teams: [driverData.team],
+        extractedAt: new Date().toISOString(),
+      };
+
+      const closeBtn = await popup.$(
+        'button.si-popup__close, button[aria-label*="close" i]',
+      );
+      if (closeBtn) {
+        await closeBtn.click();
+      } else {
+        await page.keyboard.press("Escape");
+      }
+      await page.waitForTimeout(CONFIG.DELAYS.POPUP_CLOSE);
+
+      return result;
+    } catch (error) {
+      console.log(`⚠️  Error extracting driver data: ${error.message}`);
+      try {
+        await page.keyboard.press("Escape");
+        await page.waitForTimeout(CONFIG.DELAYS.POPUP_CLOSE);
+      } catch (_) {
+        /* ignore */
+      }
+      return null;
+    }
   }
 
   async extractSessionDataEnhanced(raceElement) {
