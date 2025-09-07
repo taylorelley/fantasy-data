@@ -1,0 +1,1591 @@
+/**
+ * F1 Fantasy Complete Data Scraper
+ * 
+ * A comprehensive web scraper for extracting F1 Fantasy driver data from the official
+ * Formula 1 Fantasy website. Handles all drivers including team swap scenarios.
+ * 
+ * Features:
+ * - Extracts all 21+ F1 drivers with complete race/sprint breakdowns
+ * - Handles team swap drivers (Tsunoda, Lawson) by merging their data
+ * - Extracts percentage picked data for each driver
+ * - Extracts team information, positions, costs, and points
+ * - Saves files as abbreviation.json (e.g., NOR.json, TSU.json)
+ * - Generates comprehensive summary and ranking data
+ * - Creates team-based breakdowns
+ * - Handles sprint weekends automatically
+ * - Manages race order dynamically from website
+ * 
+ * Output Files (exported to versioned folder based on most recent race):
+ * Individual Driver Files ([round]-[raceName]/driver_data/):
+ *   - NOR.json, PIA.json, VER.json, etc. (one per driver)
+ * 
+ * Summary Files ([round]-[raceName]/summary_data/):
+ *   - weekend_summary.json: Points by race for all drivers
+ *   - extraction_summary.json: Overall statistics and driver list
+ *   - team_summary.json: Data grouped by team
+ *   - percentage_picked_ranking.json: Drivers ranked by popularity
+ * 
+ * @version 3.1
+ * @author Josh Bruce
+ * @date 2025-08-08
+ */
+
+const { chromium } = require('playwright');
+const fs = require('fs').promises;
+const path = require('path');
+
+// Configuration
+const CONFIG = {
+    DRIVER_URL: 'https://fantasy.formula1.com/en/statistics/details?tab=driver&filter=fPoints',
+    CONSTRUCTOR_URL: 'https://fantasy.formula1.com/en/statistics/details?tab=constructor&filter=fPoints',
+    OUTPUT_DIR: 'driver_data',
+    CONSTRUCTOR_OUTPUT_DIR: 'constructor_data',
+    SUMMARY_OUTPUT_DIR: 'summary_data',
+    BROWSER_HEADLESS: false, // Set to true for production
+    PROCESS_ALL_DRIVERS: true,
+    PROCESS_ALL_CONSTRUCTORS: true,
+    DELAYS: {
+        PAGE_LOAD: 5000,
+        POPUP_WAIT: 3000,
+        BETWEEN_DRIVERS: 2000,
+        BETWEEN_CONSTRUCTORS: 2000,
+        POPUP_CLOSE: 1000,
+        TAB_SWITCH: 2000
+    }
+};
+
+// Driver abbreviations mapping - maintains consistency across seasons
+const DRIVER_ABBREVIATIONS = {
+    'landonorrisdriver': 'NOR',
+    'oscarpiastridriver': 'PIA', 
+    'maxverstappendriver': 'VER',
+    'georgerusselldriver': 'RUS',
+    'lewishamiltondriver': 'HAM',
+    'charlesleclercdriver': 'LEC',
+    'carlossainzdriver': 'SAI',
+    'sergioperezdriver': 'PER',
+    'fernandoalonsodriver': 'ALO',
+    'lancestrolldriver': 'STR',
+    'pierregaslydriver': 'GAS',
+    'estebanocondriver': 'OCO',
+    'nicohulkenbergdriver': 'HUL',
+    'kevinmagnussendriver': 'MAG',
+    'valtteribottasdriver': 'BOT',
+    'guanyuzhoudriver': 'ZHO',
+    'alexanderalbondriver': 'ALB',
+    'logansargeantdriver': 'SAR',
+    'yukitsunodadriver': 'TSU',
+    'danielricciardodriver': 'RIC',
+    'kimiantonellidriver': 'ANT',
+    'oliverbearmandriver': 'BEA',
+    'isackhadjardriver': 'HAD',
+    'gabrielbortoletodriver': 'BOR',
+    'liamlawsondriver': 'LAW',
+    'francocolapintodriver': 'COL',
+    'jackdoohandriver': 'DOO'
+};
+
+// Team swap drivers - drivers who switched teams mid-season
+const TEAM_SWAP_DRIVERS = {
+    'yukitsunodadriver': {
+        name: 'Yuki Tsunoda',
+        abbreviation: 'TSU'
+    },
+    'liamlawsondriver': {
+        name: 'Liam Lawson', 
+        abbreviation: 'LAW'
+    }
+};
+
+// Constructor abbreviations mapping
+const CONSTRUCTOR_ABBREVIATIONS = {
+    'mclaren': 'MCL',
+    'redbull': 'RBR', 
+    'redbullracing': 'RBR',
+    'ferrari': 'FER',
+    'mercedes': 'MER',
+    'astonmartin': 'AMR',
+    'alpine': 'ALP',
+    'haas': 'HAS',
+    'williams': 'WIL',
+    'kicksauber': 'SAU',
+    'sauber': 'SAU',
+    'rb': 'RB',
+    'racingbulls': 'RB',
+    'alphatauri': 'RB'
+};
+
+// Global data structures
+const RACE_ORDER_MAP = new Map();
+const driverBreakdowns = new Map();
+const constructorBreakdowns = new Map();
+const summaryData = new Map();
+const constructorSummaryData = new Map();
+const processedDrivers = new Set();
+const processedConstructors = new Set();
+const teamSwapData = new Map();
+const driverListData = new Map();
+const constructorListData = new Map();
+
+/**
+ * Second pass fix: manually sort weekend summary file
+ */
+async function fixWeekendSummaryOrdering(filePath) {
+    try {
+        // Read the existing file
+        const fileContent = await fs.readFile(filePath, 'utf8');
+        const data = JSON.parse(fileContent);
+        
+        // Create new object with proper race order
+        const sortedData = {};
+        const correctOrder = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15'];
+        
+        // Add races in correct order
+        for (const round of correctOrder) {
+            if (data[round]) {
+                sortedData[round] = data[round];
+            }
+        }
+        
+        // Write the corrected file
+        await fs.writeFile(filePath, JSON.stringify(sortedData, null, 2));
+        console.log('✅ Driver weekend summary file ordering fixed');
+        
+    } catch (error) {
+        console.error('❌ Error fixing driver weekend summary ordering:', error.message);
+    }
+}
+
+/**
+ * Second pass fix: manually sort constructor weekend summary file
+ */
+async function fixConstructorWeekendSummaryOrdering(filePath) {
+    try {
+        // Read the existing file
+        const fileContent = await fs.readFile(filePath, 'utf8');
+        const data = JSON.parse(fileContent);
+        
+        console.log('🔧 Keys in original file:', Object.keys(data).slice(0, 10));
+        
+        // Create new object with proper race order using Object.fromEntries
+        const correctOrder = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15'];
+        
+        // Build entries array in correct order
+        const sortedEntries = correctOrder
+            .filter(round => data[round])
+            .map(round => [round, data[round]]);
+        
+        console.log('🔧 First few entries:', sortedEntries.slice(0, 3).map(([key, _]) => key));
+        
+        // Create object from entries
+        const sortedData = Object.fromEntries(sortedEntries);
+        
+        console.log('🔧 Keys in sorted data:', Object.keys(sortedData).slice(0, 10));
+        
+        // Write the corrected file
+        await fs.writeFile(filePath, JSON.stringify(sortedData, null, 2));
+        console.log('✅ Constructor weekend summary file ordering fixed');
+        
+    } catch (error) {
+        console.error('❌ Error fixing constructor weekend summary ordering:', error.message);
+    }
+}
+
+/**
+ * Main scraper function
+ */
+async function main() {
+    const browser = await chromium.launch({ headless: CONFIG.BROWSER_HEADLESS });
+    const page = await browser.newPage();
+    
+    try {
+        console.log('🏁 F1 Fantasy Complete Data Scraper v3.1 Starting...');
+        
+        // DRIVERS TAB
+        console.log(`\n🏎️  PROCESSING DRIVERS`);
+        console.log(`📊 Target: ${CONFIG.DRIVER_URL}`);
+        
+        // Load drivers page and handle consent
+        await page.goto(CONFIG.DRIVER_URL, { waitUntil: 'networkidle', timeout: 60000 });
+        await handleCookieConsent(page);
+        await page.waitForSelector('.si-main__container', { timeout: 30000 });
+        await page.waitForTimeout(CONFIG.DELAYS.PAGE_LOAD);
+        
+        // Extract driver list data (positions, teams, values)
+        console.log('📋 Extracting driver list data...');
+        const driverElements = await extractDriverListData(page);
+        console.log(`✅ Found ${driverElements.length} drivers in main list`);
+        
+        // Establish race order from website
+        console.log(`📅 Establishing race order...`);
+        const raceOrderDriverIndex = await establishRaceOrder(page, driverElements);
+        
+        // Process all drivers including team swaps (skip the one used for race order)
+        await processAllDrivers(page, driverElements, raceOrderDriverIndex);
+        
+        // Merge team swap driver data
+        await mergeTeamSwapDrivers();
+        
+        // CONSTRUCTORS TAB
+        console.log(`\n🏗️  PROCESSING CONSTRUCTORS`);
+        console.log(`📊 Target: ${CONFIG.CONSTRUCTOR_URL}`);
+        
+        // Navigate to constructors page
+        await page.goto(CONFIG.CONSTRUCTOR_URL, { waitUntil: 'networkidle', timeout: 60000 });
+        await page.waitForSelector('.si-main__container', { timeout: 30000 });
+        await page.waitForTimeout(CONFIG.DELAYS.PAGE_LOAD);
+        
+        // Extract constructor list data  
+        console.log('📋 Extracting constructor list data...');
+        const constructorElements = await extractConstructorListData(page);
+        console.log(`✅ Found ${constructorElements.length} constructors in main list`);
+        
+        // Process all constructors
+        await processAllConstructors(page, constructorElements);
+        
+        // Save all results
+        await saveResults();
+        
+        console.log(`\n🎉 SCRAPING COMPLETE!`);
+        console.log(`📊 Successfully processed ${driverBreakdowns.size} unique drivers`);
+        console.log(`🏗️  Successfully processed ${constructorBreakdowns.size} unique constructors`);
+        console.log(`🔄 Team swap drivers handled: ${Array.from(driverBreakdowns.values()).filter(d => d.teamSwap).length}`);
+        
+        const mostRecentRace = getMostRecentRace();
+        const versionFolder = `${mostRecentRace.round}-${mostRecentRace.raceName}`;
+        console.log(`📁 Results exported to versioned folder: ${versionFolder}/`);
+        console.log(`📁 Results also exported to latest folder: latest/`);
+        console.log(`📁 Individual drivers: ${versionFolder}/driver_data/ & latest/driver_data/`);
+        console.log(`📁 Individual constructors: ${versionFolder}/constructor_data/ & latest/constructor_data/`);
+        console.log(`📁 Summary data: ${versionFolder}/summary_data/ & latest/summary_data/`);
+        
+    } catch (error) {
+        console.error('❌ Scraper failed:', error.message);
+        console.error(error.stack);
+    } finally {
+        await browser.close();
+    }
+}
+
+/**
+ * Handle cookie consent dialog
+ */
+async function handleCookieConsent(page) {
+    try {
+        const iframeElement = await page.$('#sp_message_iframe_1336275');
+        if (iframeElement) {
+            const iframe = await iframeElement.contentFrame();
+            if (iframe) {
+                await iframe.click('button:has-text("Essential only cookies")', { timeout: 3000 });
+                console.log('✅ Cookie consent handled');
+                await page.waitForTimeout(2000);
+            }
+        }
+    } catch (e) {
+        console.log('ℹ️  No cookie consent dialog');
+    }
+}
+
+/**
+ * Extract comprehensive driver data from main list including teams, positions, costs
+ */
+async function extractDriverListData(page) {
+    console.log('🔍 Extracting driver list data with teams...');
+    
+    const driverElements = await page.$$('div[class*="si-stats__list-item"]');
+    const validDrivers = [];
+    const driverSurnames = [
+        'NORRIS', 'PIASTRI', 'VERSTAPPEN', 'RUSSELL', 'HAMILTON', 'LECLERC',
+        'SAINZ', 'PEREZ', 'ALONSO', 'STROLL', 'GASLY', 'OCON', 'HULKENBERG',
+        'MAGNUSSEN', 'BOTTAS', 'ZHOU', 'ALBON', 'SARGEANT', 'TSUNODA', 'RICCIARDO',
+        'ANTONELLI', 'BEARMAN', 'HADJAR', 'BORTOLETO', 'LAWSON', 'COLAPINTO', 'DOOHAN'
+    ];
+    
+    console.log(`📋 Analyzing ${driverElements.length} list elements...`);
+    
+    // Parse driver list data in groups of 4 (position, team, cost, points)
+    for (let i = 0; i < driverElements.length - 3; i += 4) {
+        try {
+            const positionText = await driverElements[i].textContent();
+            const teamText = await driverElements[i + 1].textContent();
+            const costText = await driverElements[i + 2].textContent();
+            const pointsText = await driverElements[i + 3].textContent();
+            
+            if (!positionText) continue;
+            
+            // Check if this is a driver row
+            const hasDriverName = driverSurnames.some(surname => positionText.includes(surname));
+            const positionMatch = positionText.trim().match(/^(\d+)/);
+            
+            if (hasDriverName && positionMatch) {
+                const position = parseInt(positionMatch[1]);
+                const driverName = positionText.replace(/^\d+/, '').trim();
+                
+                const driverInfo = {
+                    element: driverElements[i],
+                    index: i,
+                    position: position,
+                    name: driverName,
+                    team: teamText?.trim() || 'Unknown',
+                    cost: costText?.trim() || '0',
+                    points: parseInt(pointsText?.trim()) || 0,
+                    text: positionText.trim()
+                };
+                
+                validDrivers.push(driverInfo);
+                
+                // Store in global map for later reference
+                const cleanDriverName = driverName.toLowerCase().replace(/\s+/g, '') + 'driver';
+                driverListData.set(cleanDriverName, driverInfo);
+                
+                console.log(`   📍 [${position}] ${driverName} | ${driverInfo.team} | ${driverInfo.cost} | ${driverInfo.points} pts`);
+            }
+        } catch (error) {
+            // Skip this set of elements and continue
+            continue;
+        }
+    }
+    
+    console.log(`📊 Extracted ${validDrivers.length} valid drivers from main list`);
+    return validDrivers;
+}
+
+/**
+ * Establish race order from website to maintain correct chronological order
+ */
+async function establishRaceOrder(page, driverElements) {
+    try {
+        // Find the first clickable driver to establish race order
+        for (let i = 0; i < Math.min(5, driverElements.length); i++) {
+            try {
+                const driverData = driverElements[i];
+                console.log(`📅 Establishing race order from: ${driverData.name}...`);
+                
+                await driverData.element.click();
+                await page.waitForSelector('.si-popup__container', { timeout: 10000 });
+                await page.waitForTimeout(CONFIG.DELAYS.POPUP_WAIT);
+                
+                const popup = await page.$('.si-popup__container');
+                const accordionItems = await popup.$$('.si-accordion__box');
+                
+                let raceOrder = 1;
+                for (const accordionItem of accordionItems) {
+                    const raceNameElement = await accordionItem.$('.si-league__card-title span');
+                    const raceName = await raceNameElement?.textContent();
+                    
+                    if (raceName && raceName !== 'Season') {
+                        const raceNameTrimmed = raceName.trim();
+                        const round = String(raceOrder);
+                        RACE_ORDER_MAP.set(raceNameTrimmed, round);
+                        console.log(`   📅 Round ${round}: ${raceNameTrimmed}`);
+                        raceOrder++;
+                    }
+                }
+                
+                await closePopup(page);
+                console.log(`✅ Race order established: ${RACE_ORDER_MAP.size} races found`);
+                
+                // Pre-populate summary Maps with correct race order to ensure proper sorting
+                console.log(`📋 Pre-populating summary data structures...`);
+                
+                // Create sorted list of race rounds in chronological order
+                const sortedRaces = Array.from(RACE_ORDER_MAP.entries())
+                    .sort(([, roundA], [, roundB]) => parseInt(roundA) - parseInt(roundB));
+                
+                for (const [raceName, round] of sortedRaces) {
+                    // Pre-populate driver summary data
+                    if (!summaryData.has(round)) {
+                        summaryData.set(round, {
+                            round: round,
+                            raceName: raceName,
+                            drivers: new Map()
+                        });
+                    }
+                    
+                    // Pre-populate constructor summary data
+                    if (!constructorSummaryData.has(round)) {
+                        constructorSummaryData.set(round, {
+                            round: round,
+                            raceName: raceName,
+                            constructors: new Map()
+                        });
+                    }
+                }
+                console.log(`✅ Summary data structures pre-populated in correct order`);
+                
+                // Mark this driver as race order established so we can skip processing it later
+                driverData.usedForRaceOrder = true;
+                
+                return i; // Return the index of the driver used for race order
+                
+            } catch (error) {
+                console.log(`   ⚠️  Failed to establish from ${driverElements[i]?.name || 'driver'}, trying next...`);
+                await emergencyClosePopup(page);
+                continue;
+            }
+        }
+        
+        throw new Error('Could not establish race order from any driver');
+        
+    } catch (error) {
+        console.error(`❌ Error establishing race order: ${error.message}`);
+        throw error;
+    }
+}
+
+/**
+ * Process all drivers including team swap handling
+ */
+async function processAllDrivers(page, driverElements, raceOrderDriverIndex = -1) {
+    console.log(`🏎️  Processing ${driverElements.length} drivers...`);
+    
+    for (let i = 0; i < driverElements.length; i++) {
+        const driverData = driverElements[i];
+        
+        try {
+            // Process normally, but add note if this was the race order driver
+            if (i === raceOrderDriverIndex) {
+                console.log(`\n👤 Processing driver ${i + 1}/${driverElements.length} (race order driver)...`);
+            } else {
+                console.log(`\n👤 Processing driver ${i + 1}/${driverElements.length}...`);
+            }
+            
+            await processDriver(page, driverData, i);
+            await page.waitForTimeout(CONFIG.DELAYS.BETWEEN_DRIVERS);
+        } catch (error) {
+            console.error(`❌ Error processing driver ${i + 1}: ${error.message}`);
+            await emergencyClosePopup(page);
+        }
+    }
+}
+
+/**
+ * Process individual driver data extraction
+ */
+async function processDriver(page, driverData, index) {
+    try {
+        console.log(`👆 Clicking: [${driverData.position}] ${driverData.name} (${driverData.team})`);
+        
+        // Click driver to open popup
+        await driverData.element.click();
+        await page.waitForSelector('.si-popup__container', { timeout: 10000 });
+        await page.waitForTimeout(CONFIG.DELAYS.POPUP_WAIT);
+        
+        // Extract comprehensive driver data
+        const extractedData = await extractDriverDataEnhanced(page, driverData);
+        
+        if (extractedData && extractedData.driverId) {
+            const driverId = extractedData.driverId;
+            
+            // Check if this is a team swap driver
+            if (TEAM_SWAP_DRIVERS[driverId]) {
+                console.log(`🔄 Team swap driver detected: ${extractedData.name} (${extractedData.team})`);
+                
+                // Store this version for later merging
+                if (!teamSwapData.has(driverId)) {
+                    teamSwapData.set(driverId, []);
+                }
+                teamSwapData.get(driverId).push(extractedData);
+                
+                console.log(`✅ Stored version ${teamSwapData.get(driverId).length} for ${extractedData.name} with ${extractedData.team}`);
+                
+            } else {
+                // Regular driver processing
+                if (processedDrivers.has(driverId)) {
+                    console.log(`⚠️  DUPLICATE: ${driverId} already processed, skipping...`);
+                } else {
+                    processedDrivers.add(driverId);
+                    
+                    if (extractedData.races.length > 0) {
+                        driverBreakdowns.set(driverId, extractedData);
+                        updateSummaryData(extractedData);
+                        
+                        const totalRacePoints = extractedData.races.reduce((sum, race) => sum + race.totalPoints, 0);
+                        console.log(`✅ SUCCESS: ${extractedData.name} (${extractedData.abbreviation}) - ${extractedData.team}`);
+                        console.log(`   📊 ${extractedData.races.length} races, ${totalRacePoints} total points, ${extractedData.percentagePicked}% picked`);
+                    }
+                }
+            }
+        } else {
+            console.log(`❌ No driver data extracted for driver ${index + 1}`);
+        }
+        
+        await closePopup(page);
+        
+    } catch (error) {
+        console.error(`❌ Error processing driver ${index + 1}: ${error.message}`);
+        await emergencyClosePopup(page);
+    }
+}
+
+/**
+ * Extract comprehensive driver data including percentage picked and team info
+ */
+async function extractDriverDataEnhanced(page, listDriverData) {
+    const popup = await page.$('.si-popup__container');
+    if (!popup) return null;
+    
+    // Extract basic info including percentage picked
+    const basicInfo = await page.evaluate(() => {
+        const popup = document.querySelector('.si-popup__container');
+        if (!popup) return null;
+        
+        const fullText = popup.textContent || '';
+        
+        // Extract driver name
+        let driverName = 'unknown_driver';
+        const playerNameDiv = popup.querySelector('.si-player__name');
+        if (playerNameDiv) {
+            const playerText = playerNameDiv.textContent.trim().toLowerCase();
+            const cleanName = playerText.replace(/\s+/g, '') + 'driver';
+            if (cleanName.match(/^[a-z]+driver$/)) {
+                driverName = cleanName;
+            }
+        }
+        
+        // Fallback name extraction
+        if (driverName === 'unknown_driver') {
+            const cleanedText = fullText.replace(/^\s*Inactive\s*/i, '').trim();
+            const nameMatch = cleanedText.match(/^([a-z]+driver)/i);
+            if (nameMatch) {
+                driverName = nameMatch[1].toLowerCase();
+            }
+        }
+        
+        // Extract value, season points, and percentage picked
+        const valueMatch = fullText.match(/\$([0-9.]+M)/);
+        const seasonPointsMatch = fullText.match(/Season Points\s+(\d+)\s+Pts/i);
+        
+        // Extract percentage picked with multiple fallback patterns
+        let percentagePicked = 0;
+        const percentagePatterns = [
+            /Percentage Picked\s+(\d+)\s*%/i,
+            /(\d+)\s*%/,
+            /picked\s+(\d+)%/i
+        ];
+        
+        for (const pattern of percentagePatterns) {
+            const match = fullText.match(pattern);
+            if (match) {
+                percentagePicked = parseInt(match[1]);
+                break;
+            }
+        }
+        
+        // Also try to find percentage in specific elements
+        if (percentagePicked === 0) {
+            const percentageElements = popup.querySelectorAll('.si-driCon__list-stats span, .si-driCon__list-stats em');
+            for (const el of percentageElements) {
+                const text = el.textContent || '';
+                const match = text.match(/(\d+)\s*%/);
+                if (match) {
+                    percentagePicked = parseInt(match[1]);
+                    break;
+                }
+            }
+        }
+        
+        const displayName = playerNameDiv ? playerNameDiv.textContent.trim() : driverName;
+        
+        return {
+            driverName: driverName,
+            displayName: displayName,
+            driverValue: valueMatch ? valueMatch[1] : '0',
+            seasonTotalPoints: seasonPointsMatch ? parseInt(seasonPointsMatch[1]) : 0,
+            percentagePicked: percentagePicked,
+            isInactive: fullText.includes('Inactive')
+        };
+    });
+    
+    if (!basicInfo || !basicInfo.driverName) return null;
+    
+    const abbreviation = DRIVER_ABBREVIATIONS[basicInfo.driverName] || 'UNK';
+    const teamInfo = listDriverData.team || 'Unknown';
+    
+    console.log(`   🔍 Extracted: ${basicInfo.driverName} -> ${abbreviation} (${teamInfo}) - ${basicInfo.percentagePicked}% picked`);
+    
+    // Extract race data
+    const races = [];
+    const accordionItems = await popup.$$('.si-accordion__box');
+    
+    for (const accordionItem of accordionItems) {
+        try {
+            const raceNameElement = await accordionItem.$('.si-league__card-title span');
+            const raceName = await raceNameElement?.textContent();
+            
+            const totalElement = await accordionItem.$('.si-totalPts__counts em');
+            const totalText = await totalElement?.textContent();
+            const raceTotal = totalText ? parseInt(totalText) : 0;
+            
+            if (raceName === 'Season' || !raceName) continue;
+            
+            const raceNameTrimmed = raceName.trim();
+            const round = RACE_ORDER_MAP.get(raceNameTrimmed) || '0';
+            
+            const sessionData = await extractSessionDataEnhanced(accordionItem);
+            
+            races.push({
+                round: round,
+                raceName: raceName.trim(),
+                totalPoints: raceTotal,
+                ...sessionData
+            });
+        } catch (error) {
+            console.log(`⚠️  Error processing race: ${error.message}`);
+        }
+    }
+    
+    // Sort races by round number (numeric sort)
+    races.sort((a, b) => parseInt(a.round) - parseInt(b.round));
+    
+    return {
+        driverId: basicInfo.driverName.replace(/[^a-z0-9]/g, '_'),
+        name: basicInfo.driverName,
+        displayName: basicInfo.displayName,
+        abbreviation: abbreviation,
+        team: teamInfo,
+        position: listDriverData.position,
+        value: basicInfo.driverValue,
+        seasonTotalPoints: basicInfo.seasonTotalPoints,
+        percentagePicked: basicInfo.percentagePicked,
+        isInactive: basicInfo.isInactive,
+        races: races,
+        extractedAt: new Date().toISOString()
+    };
+}
+
+/**
+ * Merge data for drivers who switched teams mid-season
+ */
+async function mergeTeamSwapDrivers() {
+    console.log(`\n🔄 Merging team swap drivers...`);
+    
+    for (const [driverId, versions] of teamSwapData) {
+        if (versions.length < 2) {
+            console.log(`⚠️  ${driverId}: Only ${versions.length} version found, adding as regular driver`);
+            if (versions.length === 1) {
+                driverBreakdowns.set(driverId, versions[0]);
+                updateSummaryData(versions[0]);
+            }
+            continue;
+        }
+        
+        console.log(`🔄 Merging ${versions.length} versions of ${driverId}...`);
+        
+        // Sort versions by position to get the current/main one first
+        versions.sort((a, b) => a.position - b.position);
+        const mainVersion = versions[0];
+        
+        // Create merged driver data
+        const mergedDriver = {
+            driverId: driverId,
+            name: mainVersion.name,
+            displayName: mainVersion.displayName,
+            abbreviation: mainVersion.abbreviation,
+            team: mainVersion.team,
+            position: mainVersion.position,
+            value: mainVersion.value,
+            percentagePicked: mainVersion.percentagePicked,
+            teamSwap: true,
+            teams: versions.map(v => v.team).filter(team => team !== 'Unknown'),
+            teamSwapDetails: versions.map(v => ({
+                team: v.team,
+                position: v.position,
+                value: v.value,
+                points: v.seasonTotalPoints
+            })),
+            seasonTotalPoints: versions.reduce((sum, v) => sum + (v.seasonTotalPoints || 0), 0),
+            races: [],
+            extractedAt: new Date().toISOString(),
+            versions: versions.length
+        };
+        
+        // Collect all races from all versions
+        const allRaces = new Map();
+        
+        for (const version of versions) {
+            console.log(`   📊 Processing version: ${version.team} (${version.races.length} races, ${version.seasonTotalPoints} pts)`);
+            
+            for (const race of version.races) {
+                const raceKey = `${race.round}-${race.raceName}`;
+                
+                if (!allRaces.has(raceKey)) {
+                    allRaces.set(raceKey, {
+                        ...race,
+                        team: version.team,
+                        source: 'single'
+                    });
+                } else {
+                    // If conflicting data, prefer version with more points
+                    const existing = allRaces.get(raceKey);
+                    if (Math.abs(race.totalPoints) > Math.abs(existing.totalPoints)) {
+                        allRaces.set(raceKey, {
+                            ...race,
+                            team: version.team,
+                            source: 'conflict-resolved',
+                            conflictWith: existing.team
+                        });
+                        console.log(`   ⚡ Resolved conflict for ${race.raceName}: chose ${version.team} data (${race.totalPoints} pts) over ${existing.team} (${existing.totalPoints} pts)`);
+                    }
+                }
+            }
+        }
+        
+        // Sort races and add to merged driver
+        mergedDriver.races = Array.from(allRaces.values()).sort((a, b) => a.round.localeCompare(b.round));
+        
+        console.log(`✅ Merged ${driverId}:`);
+        console.log(`   🏆 Combined season points: ${mergedDriver.seasonTotalPoints}`);
+        console.log(`   🏁 Teams: ${mergedDriver.teams.join(' → ')}`);
+        console.log(`   📊 Total races: ${mergedDriver.races.length}`);
+        console.log(`   📈 Percentage picked: ${mergedDriver.percentagePicked}%`);
+        
+        // Add to main data structures
+        driverBreakdowns.set(driverId, mergedDriver);
+        updateSummaryData(mergedDriver);
+    }
+}
+
+/**
+ * Extract comprehensive constructor data from main list including positions, costs
+ */
+async function extractConstructorListData(page) {
+    console.log('🔍 Extracting constructor list data...');
+    
+    const constructorElements = await page.$$('div[class*="si-stats__list-item"]');
+    const validConstructors = [];
+    const constructorNames = [
+        'MCLAREN', 'RED BULL', 'FERRARI', 'MERCEDES', 'ASTON MARTIN', 
+        'ALPINE', 'HAAS', 'WILLIAMS', 'KICK SAUBER', 'RB', 'RACING BULLS'
+    ];
+    
+    console.log(`📋 Analyzing ${constructorElements.length} list elements...`);
+    
+    // Parse constructor list data in groups of 3 (position, cost, points)
+    for (let i = 0; i < constructorElements.length - 2; i += 3) {
+        try {
+            const positionText = await constructorElements[i].textContent();
+            const costText = await constructorElements[i + 1].textContent();
+            const pointsText = await constructorElements[i + 2].textContent();
+            
+            if (!positionText) continue;
+            
+            // Check if this is a constructor row
+            const hasConstructorName = constructorNames.some(name => 
+                positionText.toUpperCase().includes(name));
+            const positionMatch = positionText.trim().match(/^(\d+)/);
+            
+            if (hasConstructorName && positionMatch) {
+                const position = parseInt(positionMatch[1]);
+                const constructorName = positionText.replace(/^\d+/, '').trim();
+                
+                const constructorInfo = {
+                    element: constructorElements[i],
+                    index: i,
+                    position: position,
+                    name: constructorName,
+                    cost: costText?.trim() || '0',
+                    points: parseInt(pointsText?.trim()) || 0,
+                    text: positionText.trim()
+                };
+                
+                validConstructors.push(constructorInfo);
+                
+                // Store in global map for later reference
+                const cleanConstructorName = constructorName.toLowerCase().replace(/[\s\-]/g, '');
+                constructorListData.set(cleanConstructorName, constructorInfo);
+                
+                console.log(`   📍 [${position}] ${constructorName} | ${constructorInfo.cost} | ${constructorInfo.points} pts`);
+            }
+        } catch (error) {
+            // Skip this set of elements and continue
+            continue;
+        }
+    }
+    
+    console.log(`📊 Extracted ${validConstructors.length} valid constructors from main list`);
+    return validConstructors;
+}
+
+/**
+ * Process all constructors
+ */
+async function processAllConstructors(page, constructorElements) {
+    console.log(`🏗️  Processing ${constructorElements.length} constructors...`);
+    
+    for (let i = 0; i < constructorElements.length; i++) {
+        const constructorData = constructorElements[i];
+        try {
+            await processConstructor(page, constructorData, i);
+            await page.waitForTimeout(CONFIG.DELAYS.BETWEEN_CONSTRUCTORS);
+        } catch (error) {
+            console.error(`❌ Error processing constructor ${i + 1}: ${error.message}`);
+            await emergencyClosePopup(page);
+        }
+    }
+}
+
+/**
+ * Process individual constructor data extraction
+ */
+async function processConstructor(page, constructorData, index) {
+    try {
+        console.log(`\n🏗️  Processing constructor ${index + 1}/${constructorListData.size}...`);
+        console.log(`👆 Clicking: [${constructorData.position}] ${constructorData.name}`);
+        
+        // Click constructor to open popup
+        await constructorData.element.click();
+        await page.waitForSelector('.si-popup__container', { timeout: 10000 });
+        await page.waitForTimeout(CONFIG.DELAYS.POPUP_WAIT);
+        
+        // Extract comprehensive constructor data
+        const extractedData = await extractConstructorDataEnhanced(page, constructorData);
+        
+        if (extractedData && extractedData.constructorId) {
+            const constructorId = extractedData.constructorId;
+            
+            // Check for duplicates
+            if (processedConstructors.has(constructorId)) {
+                console.log(`⚠️  DUPLICATE: ${constructorId} already processed, skipping...`);
+            } else {
+                processedConstructors.add(constructorId);
+                
+                if (extractedData.races.length > 0) {
+                    constructorBreakdowns.set(constructorId, extractedData);
+                    updateConstructorSummaryData(extractedData);
+                    
+                    const totalRacePoints = extractedData.races.reduce((sum, race) => sum + race.totalPoints, 0);
+                    console.log(`✅ SUCCESS: ${extractedData.name} (${extractedData.abbreviation})`);
+                    console.log(`   📊 ${extractedData.races.length} races, ${totalRacePoints} total points, ${extractedData.percentagePicked}% picked`);
+                }
+            }
+        } else {
+            console.log(`❌ No constructor data extracted for constructor ${index + 1}`);
+        }
+        
+        await closePopup(page);
+        
+    } catch (error) {
+        console.error(`❌ Error processing constructor ${index + 1}: ${error.message}`);
+        await emergencyClosePopup(page);
+    }
+}
+
+/**
+ * Extract comprehensive constructor data including percentage picked
+ */
+async function extractConstructorDataEnhanced(page, listConstructorData) {
+    const popup = await page.$('.si-popup__container');
+    if (!popup) return null;
+    
+    // Extract basic info including percentage picked
+    const basicInfo = await page.evaluate(() => {
+        const popup = document.querySelector('.si-popup__container');
+        if (!popup) return null;
+        
+        const fullText = popup.textContent || '';
+        
+        // Extract constructor name
+        let constructorName = 'unknown_constructor';
+        const playerNameDiv = popup.querySelector('.si-player__name');
+        if (playerNameDiv) {
+            const playerText = playerNameDiv.textContent.trim();
+            constructorName = playerText.toLowerCase().replace(/[\s\-]/g, '');
+        }
+        
+        // Extract value, season points, and percentage picked
+        const valueMatch = fullText.match(/\$([0-9.]+M)/);
+        const seasonPointsMatch = fullText.match(/Season Points\s+(\d+)\s+Pts/i);
+        
+        // Extract percentage picked with multiple fallback patterns
+        let percentagePicked = 0;
+        const percentagePatterns = [
+            /Percentage Picked\s+(\d+)\s*%/i,
+            /(\d+)\s*%/,
+            /picked\s+(\d+)%/i
+        ];
+        
+        for (const pattern of percentagePatterns) {
+            const match = fullText.match(pattern);
+            if (match) {
+                percentagePicked = parseInt(match[1]);
+                break;
+            }
+        }
+        
+        // Also try to find percentage in specific elements
+        if (percentagePicked === 0) {
+            const percentageElements = popup.querySelectorAll('.si-driCon__list-stats span, .si-driCon__list-stats em');
+            for (const el of percentageElements) {
+                const text = el.textContent || '';
+                const match = text.match(/(\d+)\s*%/);
+                if (match) {
+                    percentagePicked = parseInt(match[1]);
+                    break;
+                }
+            }
+        }
+        
+        const displayName = playerNameDiv ? playerNameDiv.textContent.trim() : constructorName;
+        
+        return {
+            constructorName: constructorName,
+            displayName: displayName,
+            constructorValue: valueMatch ? valueMatch[1] : '0',
+            seasonTotalPoints: seasonPointsMatch ? parseInt(seasonPointsMatch[1]) : 0,
+            percentagePicked: percentagePicked
+        };
+    });
+    
+    if (!basicInfo || !basicInfo.constructorName) return null;
+    
+    const abbreviation = CONSTRUCTOR_ABBREVIATIONS[basicInfo.constructorName] || 
+        listConstructorData.name.substring(0, 3).toUpperCase();
+    
+    console.log(`   🔍 Extracted: ${basicInfo.constructorName} -> ${abbreviation} - ${basicInfo.percentagePicked}% picked`);
+    
+    // Extract race data
+    const races = [];
+    const accordionItems = await popup.$$('.si-accordion__box');
+    
+    for (const accordionItem of accordionItems) {
+        try {
+            const raceNameElement = await accordionItem.$('.si-league__card-title span');
+            const raceName = await raceNameElement?.textContent();
+            
+            const totalElement = await accordionItem.$('.si-totalPts__counts em');
+            const totalText = await totalElement?.textContent();
+            const raceTotal = totalText ? parseInt(totalText) : 0;
+            
+            if (raceName === 'Season' || !raceName) continue;
+            
+            const raceNameTrimmed = raceName.trim();
+            const round = RACE_ORDER_MAP.get(raceNameTrimmed) || '0';
+            
+            const sessionData = await extractConstructorSessionData(accordionItem);
+            
+            races.push({
+                round: round,
+                raceName: raceName.trim(),
+                totalPoints: raceTotal,
+                ...sessionData
+            });
+        } catch (error) {
+            console.log(`⚠️  Error processing race: ${error.message}`);
+        }
+    }
+    
+    // Sort races by round number (numeric sort)
+    races.sort((a, b) => parseInt(a.round) - parseInt(b.round));
+    
+    return {
+        constructorId: basicInfo.constructorName.replace(/[^a-z0-9]/g, '_'),
+        name: basicInfo.constructorName,
+        displayName: basicInfo.displayName,
+        abbreviation: abbreviation,
+        position: listConstructorData.position,
+        value: basicInfo.constructorValue,
+        seasonTotalPoints: basicInfo.seasonTotalPoints,
+        percentagePicked: basicInfo.percentagePicked,
+        races: races,
+        extractedAt: new Date().toISOString()
+    };
+}
+
+/**
+ * Extract constructor session data for races and sprints
+ */
+async function extractConstructorSessionData(raceElement) {
+    const sessionData = {
+        race: {
+            position: 0,
+            qualifyingPosition: 0,
+            fastestLap: 0,
+            pitStopBonus: 0,
+            fastestPitStop: 0,
+            worldRecordBonus: 0,
+            disqualificationPenalty: 0,
+            positionsGained: 0,
+            positionsLost: 0,
+            overtakes: 0
+        },
+        qualifying: {
+            q2Bonus: 0,
+            q3Bonus: 0,
+            disqualificationPenalty: 0
+        }
+    };
+    
+    // Check if this is a sprint weekend
+    const hasSprintSession = await raceElement.$('.si-tabs__wrap button:has-text("Sprint")');
+    if (hasSprintSession) {
+        sessionData.sprint = {
+            position: 0,
+            qualifyingPosition: 0,
+            fastestLap: 0,
+            disqualificationPenalty: 0,
+            positionsGained: 0,
+            positionsLost: 0,
+            overtakes: 0
+        };
+    }
+    
+    try {
+        const tables = await raceElement.$$('table.si-tbl');
+        
+        for (const table of tables) {
+            const rows = await table.$$('tbody tr');
+            
+            for (const row of rows) {
+                const cells = await row.$$('td');
+                if (cells.length >= 3) {
+                    const eventName = await cells[0].textContent();
+                    const pointsText = await cells[2].textContent();
+                    
+                    const isNegative = await cells[2].evaluate(cell => cell.classList.contains('si-negative'));
+                    
+                    let points = 0;
+                    if (pointsText && pointsText.trim() !== '-') {
+                        const pointsMatch = pointsText.match(/(-?)(\d+)/);
+                        if (pointsMatch) {
+                            points = parseInt(pointsMatch[2]);
+                            if (isNegative || pointsMatch[1] === '-') {
+                                points = -Math.abs(points);
+                            }
+                        }
+                    }
+                    
+                    // Map events to structure - constructor specific events
+                    const eventLower = eventName?.toLowerCase() || '';
+                    
+                    // Race events
+                    if (eventLower.includes('race position') && !eventLower.includes('gained') && !eventLower.includes('lost')) {
+                        sessionData.race.position = points;
+                    } else if (eventLower.includes('race fastest lap')) {
+                        sessionData.race.fastestLap = points;
+                    } else if (eventLower.includes('fastest pit stop') || eventLower.includes('fastest pitstop')) {
+                        sessionData.race.fastestPitStop = points;
+                    } else if (eventLower.includes('world record') || eventLower.includes('pitstop world record')) {
+                        sessionData.race.worldRecordBonus = points;
+                    } else if (eventLower.includes('pit stop') || eventLower.includes('pitstop')) {
+                        sessionData.race.pitStopBonus += points;
+                    } else if (eventLower.includes('race positions gained') || (eventLower.includes('race') && eventLower.includes('positions gained'))) {
+                        sessionData.race.positionsGained += points;
+                    } else if (eventLower.includes('race positions lost') || (eventLower.includes('race') && eventLower.includes('positions lost'))) {
+                        sessionData.race.positionsLost += points;
+                    } else if (eventLower.includes('race overtake') || (eventLower.includes('race') && eventLower.includes('overtake'))) {
+                        sessionData.race.overtakes += points;
+                    } else if (eventLower.includes('race') && eventLower.includes('disqualified')) {
+                        sessionData.race.disqualificationPenalty += points;
+                        
+                    // Qualifying events
+                    } else if (eventLower.includes('qualifying') && !eventLower.includes('position')) {
+                        // Handle Q2/Q3 bonuses
+                        if (eventLower.includes('q2') || eventLower.includes('reach q2') || eventLower.includes('both drivers reach q2')) {
+                            sessionData.qualifying.q2Bonus = points;
+                        } else if (eventLower.includes('q3') || eventLower.includes('reach q3') || eventLower.includes('both drivers reach q3')) {
+                            sessionData.qualifying.q3Bonus = points;
+                        }
+                    } else if (eventLower.includes('qualifying position') || (eventLower.includes('qualifying') && eventLower.includes('position'))) {
+                        sessionData.race.qualifyingPosition = points;
+                    } else if (eventLower.includes('qualifying') && eventLower.includes('disqualified')) {
+                        sessionData.qualifying.disqualificationPenalty += points;
+                        
+                    // Sprint events
+                    } else if (eventLower.includes('sprint position') && !eventLower.includes('gained') && !eventLower.includes('lost')) {
+                        if (sessionData.sprint) sessionData.sprint.position = points;
+                    } else if (eventLower.includes('sprint fastest lap')) {
+                        if (sessionData.sprint) sessionData.sprint.fastestLap = points;
+                    } else if (eventLower.includes('sprint positions gained') || (eventLower.includes('sprint') && eventLower.includes('positions gained'))) {
+                        if (sessionData.sprint) sessionData.sprint.positionsGained += points;
+                    } else if (eventLower.includes('sprint positions lost') || (eventLower.includes('sprint') && eventLower.includes('positions lost'))) {
+                        if (sessionData.sprint) sessionData.sprint.positionsLost += points;
+                    } else if (eventLower.includes('sprint overtake') || (eventLower.includes('sprint') && eventLower.includes('overtake'))) {
+                        if (sessionData.sprint) sessionData.sprint.overtakes += points;
+                    } else if (eventLower.includes('sprint') && eventLower.includes('disqualified')) {
+                        if (sessionData.sprint) sessionData.sprint.disqualificationPenalty += points;
+                    }
+                }
+            }
+        }
+    } catch (error) {
+        console.log(`⚠️  Error parsing constructor session data: ${error.message}`);
+    }
+    
+    return sessionData;
+}
+
+/**
+ * Update constructor summary data for weekend overview
+ */
+function updateConstructorSummaryData(constructorData) {
+    for (const race of constructorData.races) {
+        if (!constructorSummaryData.has(race.round)) {
+            constructorSummaryData.set(race.round, {
+                round: race.round,
+                raceName: race.raceName,
+                constructors: new Map()
+            });
+        }
+        
+        const raceData = constructorSummaryData.get(race.round);
+        raceData.constructors.set(constructorData.abbreviation, race.totalPoints);
+    }
+}
+
+/**
+ * Extract session data for races and sprints
+ */
+async function extractSessionDataEnhanced(raceElement) {
+    const sessionData = {
+        race: {
+            dotd: 0,
+            position: 0,
+            qualifyingPosition: 0,
+            fastestLap: 0,
+            overtakeBonus: 0,
+            positionsGained: 0,
+            positionsLost: 0,
+            disqualificationPenalty: 0
+        },
+        qualifying: {
+            position: 0,
+            disqualificationPenalty: 0
+        }
+    };
+    
+    // Check if this is a sprint weekend
+    const hasSprintSession = await raceElement.$('.si-tabs__wrap button:has-text("Sprint")');
+    if (hasSprintSession) {
+        sessionData.sprint = {
+            position: 0,
+            qualifyingPosition: 0,
+            fastestLap: 0,
+            overtakeBonus: 0,
+            positionsGained: 0,
+            positionsLost: 0,
+            disqualificationPenalty: 0
+        };
+    }
+    
+    try {
+        const tables = await raceElement.$$('table.si-tbl');
+        
+        for (const table of tables) {
+            const rows = await table.$$('tbody tr');
+            
+            for (const row of rows) {
+                const cells = await row.$$('td');
+                if (cells.length >= 3) {
+                    const eventName = await cells[0].textContent();
+                    const pointsText = await cells[2].textContent();
+                    
+                    const isNegative = await cells[2].evaluate(cell => cell.classList.contains('si-negative'));
+                    
+                    let points = 0;
+                    if (pointsText && pointsText.trim() !== '-') {
+                        const pointsMatch = pointsText.match(/(-?)(\d+)/);
+                        if (pointsMatch) {
+                            points = parseInt(pointsMatch[2]);
+                            if (isNegative || pointsMatch[1] === '-') {
+                                points = -Math.abs(points);
+                            }
+                        }
+                    }
+                    
+                    // Map events to structure
+                    const eventLower = eventName?.toLowerCase() || '';
+                    
+                    // Driver-specific events
+                    if (eventLower.includes('driver of the day')) {
+                        sessionData.race.dotd = points;
+                    } else if (eventLower.includes('race position') && !eventLower.includes('gained') && !eventLower.includes('lost')) {
+                        sessionData.race.position = points;
+                    } else if (eventLower.includes('race fastest lap')) {
+                        sessionData.race.fastestLap = points;
+                    } else if (eventLower.includes('race positions gained') || (eventLower.includes('race') && eventLower.includes('positions gained'))) {
+                        sessionData.race.positionsGained += points;
+                    } else if (eventLower.includes('race positions lost') || (eventLower.includes('race') && eventLower.includes('positions lost'))) {
+                        sessionData.race.positionsLost += points;
+                    } else if (eventLower.includes('race overtake') || (eventLower.includes('race') && eventLower.includes('overtake'))) {
+                        sessionData.race.overtakeBonus += points;
+                    } else if (eventLower.includes('race') && eventLower.includes('disqualified')) {
+                        sessionData.race.disqualificationPenalty += points;
+                        
+                    // Qualifying events
+                    } else if (eventLower.includes('qualifying position') || (eventLower.includes('qualifying') && eventLower.includes('position'))) {
+                        sessionData.qualifying.position = points;
+                    } else if (eventLower.includes('qualifying') && eventLower.includes('disqualified')) {
+                        sessionData.qualifying.disqualificationPenalty += points;
+                        
+                    // Sprint events
+                    } else if (eventLower.includes('sprint position') && !eventLower.includes('gained') && !eventLower.includes('lost')) {
+                        if (sessionData.sprint) sessionData.sprint.position = points;
+                    } else if (eventLower.includes('sprint fastest lap')) {
+                        if (sessionData.sprint) sessionData.sprint.fastestLap = points;
+                    } else if (eventLower.includes('sprint positions gained') || (eventLower.includes('sprint') && eventLower.includes('positions gained'))) {
+                        if (sessionData.sprint) sessionData.sprint.positionsGained += points;
+                    } else if (eventLower.includes('sprint positions lost') || (eventLower.includes('sprint') && eventLower.includes('positions lost'))) {
+                        if (sessionData.sprint) sessionData.sprint.positionsLost += points;
+                    } else if (eventLower.includes('sprint overtake') || (eventLower.includes('sprint') && eventLower.includes('overtake'))) {
+                        if (sessionData.sprint) sessionData.sprint.overtakeBonus += points;
+                    } else if (eventLower.includes('sprint') && eventLower.includes('disqualified')) {
+                        if (sessionData.sprint) sessionData.sprint.disqualificationPenalty += points;
+                    }
+                }
+            }
+        }
+    } catch (error) {
+        console.log(`⚠️  Error parsing session data: ${error.message}`);
+    }
+    
+    return sessionData;
+}
+
+/**
+ * Update summary data for weekend overview
+ */
+function updateSummaryData(driverData) {
+    for (const race of driverData.races) {
+        if (!summaryData.has(race.round)) {
+            summaryData.set(race.round, {
+                round: race.round,
+                raceName: race.raceName,
+                drivers: new Map()
+            });
+        }
+        
+        const raceData = summaryData.get(race.round);
+        raceData.drivers.set(driverData.abbreviation, race.totalPoints);
+    }
+}
+
+/**
+ * Close popup window
+ */
+async function closePopup(page) {
+    try {
+        const closeButton = await page.$('.si-popup__close');
+        if (closeButton) {
+            await closeButton.click();
+            await page.waitForTimeout(CONFIG.DELAYS.POPUP_CLOSE);
+            return;
+        }
+    } catch (e) {}
+    
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(CONFIG.DELAYS.POPUP_CLOSE);
+}
+
+/**
+ * Emergency popup close in case of errors
+ */
+async function emergencyClosePopup(page) {
+    try {
+        await page.keyboard.press('Escape');
+        await page.keyboard.press('Escape');
+        await page.waitForTimeout(1000);
+    } catch (e) {}
+}
+
+/**
+ * Save all results to JSON files
+ */
+/**
+ * Find the most recent race for versioned export folder naming
+ */
+function getMostRecentRace() {
+    let maxRound = 0;
+    let mostRecentRace = { round: '0', raceName: 'Unknown' };
+    
+    for (const driver of driverBreakdowns.values()) {
+        for (const race of driver.races) {
+            const roundNum = parseInt(race.round);
+            if (roundNum > maxRound) {
+                maxRound = roundNum;
+                mostRecentRace = race;
+            }
+        }
+    }
+    
+    return mostRecentRace;
+}
+
+async function saveResults() {
+    console.log('\n💾 Saving results...');
+    
+    // Get most recent race for versioned folder naming
+    const mostRecentRace = getMostRecentRace();
+    const versionFolder = `${mostRecentRace.round}-${mostRecentRace.raceName}`;
+    const latestFolder = 'latest';
+    
+    const versionedOutputDir = path.join(versionFolder, 'driver_data');
+    const versionedConstructorDir = path.join(versionFolder, 'constructor_data');
+    const versionedSummaryDir = path.join(versionFolder, 'summary_data');
+    
+    const latestOutputDir = path.join(latestFolder, 'driver_data');
+    const latestConstructorDir = path.join(latestFolder, 'constructor_data');
+    const latestSummaryDir = path.join(latestFolder, 'summary_data');
+    
+    console.log(`📁 Exporting to versioned folder: ${versionFolder}/`);
+    console.log(`📁 Exporting to latest folder: ${latestFolder}/`);
+    
+    // Clear existing data for both folders
+    try {
+        await fs.rm(versionFolder, { recursive: true, force: true });
+        await fs.rm(latestFolder, { recursive: true, force: true });
+    } catch (e) {}
+    
+    // Create both directory structures
+    await fs.mkdir(versionedOutputDir, { recursive: true });
+    await fs.mkdir(versionedConstructorDir, { recursive: true });
+    await fs.mkdir(versionedSummaryDir, { recursive: true });
+    
+    await fs.mkdir(latestOutputDir, { recursive: true });
+    await fs.mkdir(latestConstructorDir, { recursive: true });
+    await fs.mkdir(latestSummaryDir, { recursive: true });
+    
+    // Save individual driver files using abbreviation.json format
+    for (const [driverId, driverData] of driverBreakdowns) {
+        const filename = `${driverData.abbreviation}.json`;
+        const versionedFilepath = path.join(versionedOutputDir, filename);
+        const latestFilepath = path.join(latestOutputDir, filename);
+        
+        const jsonData = JSON.stringify(driverData, null, 2);
+        await fs.writeFile(versionedFilepath, jsonData);
+        await fs.writeFile(latestFilepath, jsonData);
+        
+        const swapIndicator = driverData.teamSwap ? ' [TEAM SWAP]' : '';
+        console.log(`✅ Saved: ${filename} (${driverData.races.length} races, ${driverData.percentagePicked}% picked)${swapIndicator}`);
+    }
+    
+    // Save individual constructor files using abbreviation.json format
+    for (const [constructorId, constructorData] of constructorBreakdowns) {
+        const filename = `${constructorData.abbreviation}.json`;
+        const versionedFilepath = path.join(versionedConstructorDir, filename);
+        const latestFilepath = path.join(latestConstructorDir, filename);
+        
+        const jsonData = JSON.stringify(constructorData, null, 2);
+        await fs.writeFile(versionedFilepath, jsonData);
+        await fs.writeFile(latestFilepath, jsonData);
+        
+        console.log(`✅ Saved constructor: ${filename} (${constructorData.races.length} races, ${constructorData.percentagePicked}% picked)`);
+    }
+    
+    // Create weekend summary
+    const weekendSummary = {};
+    
+    for (const [round, raceData] of summaryData) {
+        weekendSummary[round] = {
+            raceName: raceData.raceName,
+            drivers: Object.fromEntries(raceData.drivers)
+        };
+    }
+    
+    // Hardcoded fix: Sort by round number with explicit handling for 0-prefixed numbers
+    const sortedSummary = {};
+    
+    // Single digit race order for proper chronological sorting
+    const driverRaceOrder = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15'];
+    
+    // Add races in the correct hardcoded order
+    driverRaceOrder.forEach(round => {
+        if (weekendSummary[round]) {
+            sortedSummary[round] = weekendSummary[round];
+        }
+    });
+    
+    const weekendSummaryJson = JSON.stringify(sortedSummary, null, 2);
+    await fs.writeFile(
+        path.join(versionedSummaryDir, 'weekend_summary.json'), 
+        weekendSummaryJson
+    );
+    await fs.writeFile(
+        path.join(latestSummaryDir, 'weekend_summary.json'), 
+        weekendSummaryJson
+    );
+    
+    console.log('✅ Weekend summary saved: weekend_summary.json');
+    
+    // Second pass: manually fix the driver weekend summary file ordering
+    console.log('🔧 Second pass: Fixing driver weekend summary file ordering...');
+    await fixWeekendSummaryOrdering(path.join(versionedSummaryDir, 'weekend_summary.json'));
+    await fixWeekendSummaryOrdering(path.join(latestSummaryDir, 'weekend_summary.json'));
+    
+    // Create constructor weekend summary
+    const constructorWeekendSummary = {};
+    
+    for (const [round, raceData] of constructorSummaryData) {
+        constructorWeekendSummary[round] = {
+            raceName: raceData.raceName,
+            constructors: Object.fromEntries(raceData.constructors)
+        };
+    }
+    
+    // Final fix: create completely new object with proper ordering
+    const sortedConstructorSummary = {};
+    
+    // Single digit race order for proper chronological sorting
+    const constructorRaceOrder = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15'];
+    
+    // Build new object in correct order by creating entries explicitly
+    for (const round of constructorRaceOrder) {
+        if (constructorWeekendSummary[round]) {
+            sortedConstructorSummary[round] = constructorWeekendSummary[round];
+        }
+    }
+    
+    console.log('🔍 Keys should now be in correct order:', Object.keys(sortedConstructorSummary).slice(0, 5));
+    
+    const constructorSummaryJson = JSON.stringify(sortedConstructorSummary, null, 2);
+    await fs.writeFile(
+        path.join(versionedSummaryDir, 'constructor_weekend_summary.json'), 
+        constructorSummaryJson
+    );
+    await fs.writeFile(
+        path.join(latestSummaryDir, 'constructor_weekend_summary.json'), 
+        constructorSummaryJson
+    );
+    
+    console.log('✅ Constructor weekend summary saved: constructor_weekend_summary.json');
+    
+    // Second pass: manually fix the constructor weekend summary file ordering
+    console.log('🔧 Second pass: Fixing constructor weekend summary file ordering...');
+    await fixConstructorWeekendSummaryOrdering(path.join(versionedSummaryDir, 'constructor_weekend_summary.json'));
+    await fixConstructorWeekendSummaryOrdering(path.join(latestSummaryDir, 'constructor_weekend_summary.json'));
+    
+    // Create comprehensive extraction summary
+    const detailedSummary = {
+        extractedAt: new Date().toISOString(),
+        totalDrivers: driverBreakdowns.size,
+        totalConstructors: constructorBreakdowns.size,
+        teamSwapDrivers: Array.from(driverBreakdowns.values()).filter(d => d.teamSwap).length,
+        totalRaces: Array.from(driverBreakdowns.values()).reduce((sum, driver) => sum + driver.races.length, 0),
+        averagePercentagePicked: driverBreakdowns.size > 0 ? Math.round(Array.from(driverBreakdowns.values()).reduce((sum, d) => sum + d.percentagePicked, 0) / driverBreakdowns.size) : 0,
+        averageConstructorPercentagePicked: constructorBreakdowns.size > 0 ? Math.round(Array.from(constructorBreakdowns.values()).reduce((sum, d) => sum + d.percentagePicked, 0) / constructorBreakdowns.size) : 0,
+        drivers: Array.from(driverBreakdowns.values()).map(driver => ({
+            abbreviation: driver.abbreviation,
+            name: driver.displayName,
+            team: driver.team,
+            position: driver.position,
+            value: driver.value,
+            seasonTotal: driver.seasonTotalPoints,
+            percentagePicked: driver.percentagePicked,
+            racesFound: driver.races.length,
+            teamSwap: driver.teamSwap || false,
+            teams: driver.teams || []
+        })).sort((a, b) => a.position - b.position),
+        constructors: Array.from(constructorBreakdowns.values()).map(constructor => ({
+            abbreviation: constructor.abbreviation,
+            name: constructor.displayName,
+            position: constructor.position,
+            value: constructor.value,
+            seasonTotal: constructor.seasonTotalPoints,
+            percentagePicked: constructor.percentagePicked,
+            racesFound: constructor.races.length
+        })).sort((a, b) => a.position - b.position)
+    };
+    
+    const detailedSummaryJson = JSON.stringify(detailedSummary, null, 2);
+    await fs.writeFile(
+        path.join(versionedSummaryDir, 'extraction_summary.json'), 
+        detailedSummaryJson
+    );
+    await fs.writeFile(
+        path.join(latestSummaryDir, 'extraction_summary.json'), 
+        detailedSummaryJson
+    );
+    
+    console.log('✅ Extraction summary saved: extraction_summary.json');
+    
+    // Create team breakdown summary
+    const teamSummary = {};
+    Array.from(driverBreakdowns.values()).forEach(driver => {
+        if (!teamSummary[driver.team]) {
+            teamSummary[driver.team] = {
+                drivers: [],
+                totalPoints: 0,
+                averagePercentagePicked: 0
+            };
+        }
+        
+        teamSummary[driver.team].drivers.push({
+            abbreviation: driver.abbreviation,
+            name: driver.displayName,
+            points: driver.seasonTotalPoints,
+            percentagePicked: driver.percentagePicked,
+            value: driver.value,
+            position: driver.position
+        });
+        
+        teamSummary[driver.team].totalPoints += driver.seasonTotalPoints;
+    });
+    
+    // Calculate averages
+    Object.keys(teamSummary).forEach(team => {
+        const teamData = teamSummary[team];
+        teamData.averagePercentagePicked = Math.round(
+            teamData.drivers.reduce((sum, d) => sum + d.percentagePicked, 0) / teamData.drivers.length
+        );
+        teamData.drivers.sort((a, b) => a.position - b.position);
+    });
+    
+    const teamSummaryJson = JSON.stringify(teamSummary, null, 2);
+    await fs.writeFile(
+        path.join(versionedSummaryDir, 'team_summary.json'), 
+        teamSummaryJson
+    );
+    await fs.writeFile(
+        path.join(latestSummaryDir, 'team_summary.json'), 
+        teamSummaryJson
+    );
+    
+    console.log('✅ Team summary saved: team_summary.json');
+    
+    // Create percentage picked ranking (simple abbreviation: percentage format)
+    const percentagePickedRanking = {};
+    Array.from(driverBreakdowns.values())
+        .sort((a, b) => b.percentagePicked - a.percentagePicked)
+        .forEach(driver => {
+            percentagePickedRanking[driver.abbreviation] = driver.percentagePicked;
+        });
+    
+    const percentagePickedJson = JSON.stringify(percentagePickedRanking, null, 2);
+    await fs.writeFile(
+        path.join(versionedSummaryDir, 'percentage_picked_ranking.json'), 
+        percentagePickedJson
+    );
+    await fs.writeFile(
+        path.join(latestSummaryDir, 'percentage_picked_ranking.json'), 
+        percentagePickedJson
+    );
+    
+    console.log('✅ Percentage picked ranking saved: percentage_picked_ranking.json');
+    
+    // Create constructor percentage picked ranking
+    const constructorPercentagePickedRanking = {};
+    Array.from(constructorBreakdowns.values())
+        .sort((a, b) => b.percentagePicked - a.percentagePicked)
+        .forEach(constructor => {
+            constructorPercentagePickedRanking[constructor.abbreviation] = constructor.percentagePicked;
+        });
+    
+    const constructorPercentagePickedJson = JSON.stringify(constructorPercentagePickedRanking, null, 2);
+    await fs.writeFile(
+        path.join(versionedSummaryDir, 'constructor_percentage_picked_ranking.json'), 
+        constructorPercentagePickedJson
+    );
+    await fs.writeFile(
+        path.join(latestSummaryDir, 'constructor_percentage_picked_ranking.json'), 
+        constructorPercentagePickedJson
+    );
+    
+    console.log('✅ Constructor percentage picked ranking saved: constructor_percentage_picked_ranking.json');
+}
+
+// Run scraper if called directly
+if (require.main === module) {
+    main().catch(console.error);
+}
+
+module.exports = { main, CONFIG };
