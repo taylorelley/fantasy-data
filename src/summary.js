@@ -43,19 +43,26 @@ async function fixWeekendSummaryOrdering(filePath) {
  * @param {string} filePath Path to the constructor summary JSON file
  * @returns {Promise<void>} Resolves when the file has been reordered
  */
-async function fixConstructorWeekendSummaryOrdering(filePath) {
+async function fixConstructorWeekendSummaryOrdering(
+  filePath,
+  debug = process.env.DEBUG === "true",
+) {
   try {
     const fileContent = await fs.readFile(filePath, "utf8");
     const data = JSON.parse(fileContent);
-    console.log("🔧 Keys in original file:", Object.keys(data).slice(0, 10));
+    if (debug) {
+      console.log("🔧 Keys in original file:", Object.keys(data).slice(0, 10));
+    }
     const sortedData = {};
     for (const round of getSortedRoundKeys(data)) {
       sortedData[round] = data[round];
     }
-    console.log(
-      "🔧 Keys in sorted data:",
-      Object.keys(sortedData).slice(0, 10),
-    );
+    if (debug) {
+      console.log(
+        "🔧 Keys in sorted data:",
+        Object.keys(sortedData).slice(0, 10),
+      );
+    }
     await fs.writeFile(filePath, JSON.stringify(sortedData, null, 2));
     console.log("✅ Constructor weekend summary file ordering fixed");
   } catch (error) {
