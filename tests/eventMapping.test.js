@@ -2,6 +2,8 @@
 /* global describe, test, expect */
 const { extractSessionDataEnhanced } = require("../src/drivers");
 const { extractConstructorSessionData } = require("../src/constructors");
+const { applyEvent } = require("../src/eventMapper");
+const { DRIVER_EVENT_MAP } = require("../src/eventMaps");
 
 function createCell(text, negative = false) {
   return {
@@ -49,6 +51,25 @@ function createRaceElement(rows, sprint = false) {
     },
   };
 }
+
+describe("applyEvent", () => {
+  test("accumulates and assigns events based on map", () => {
+    const sessionData = {
+      race: { positionsGained: 0, fastestLap: 0 },
+    };
+    applyEvent(sessionData, "Race Positions Gained", 3, DRIVER_EVENT_MAP);
+    applyEvent(sessionData, "Race Positions Gained", 2, DRIVER_EVENT_MAP);
+    applyEvent(sessionData, "Race Fastest Lap", 5, DRIVER_EVENT_MAP);
+    expect(sessionData.race.positionsGained).toBe(5);
+    expect(sessionData.race.fastestLap).toBe(5);
+  });
+
+  test("ignores unknown events", () => {
+    const sessionData = { race: { position: 0 } };
+    applyEvent(sessionData, "Unknown Event", 4, DRIVER_EVENT_MAP);
+    expect(sessionData.race.position).toBe(0);
+  });
+});
 
 describe("event mapping", () => {
   test("driver events map to the correct session sections", async () => {

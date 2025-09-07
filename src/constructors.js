@@ -3,119 +3,12 @@ const { CONFIG, CONSTRUCTOR_ABBREVIATIONS } = require("./config");
 const { updateConstructorSummaryData } = require("./summary");
 const { closePopup, emergencyClosePopup } = require("./utils");
 const { RACE_ORDER_MAP } = require("./drivers");
+const { applyEvent } = require("./eventMapper");
+const { CONSTRUCTOR_EVENT_MAP } = require("./eventMaps");
 
 const constructorBreakdowns = new Map();
 const processedConstructors = new Set();
 const constructorListData = new Map();
-
-// Mapping of normalized event names to session sections and properties
-// Order is important to ensure specific phrases match before generic ones
-const CONSTRUCTOR_EVENT_MAP = {
-  "race positions gained": {
-    section: "race",
-    property: "positionsGained",
-    accumulate: true,
-  },
-  "race positions lost": {
-    section: "race",
-    property: "positionsLost",
-    accumulate: true,
-  },
-  "race overtake": {
-    section: "race",
-    property: "overtakes",
-    accumulate: true,
-  },
-  "race fastest lap": { section: "race", property: "fastestLap" },
-  "fastest pit stop": { section: "race", property: "fastestPitStop" },
-  "fastest pitstop": { section: "race", property: "fastestPitStop" },
-  "pitstop world record": { section: "race", property: "worldRecordBonus" },
-  "world record": { section: "race", property: "worldRecordBonus" },
-  "pit stop": {
-    section: "race",
-    property: "pitStopBonus",
-    accumulate: true,
-  },
-  pitstop: {
-    section: "race",
-    property: "pitStopBonus",
-    accumulate: true,
-  },
-  "race disqualified": {
-    section: "race",
-    property: "disqualificationPenalty",
-    accumulate: true,
-  },
-  "race position": { section: "race", property: "position" },
-  "qualifying position": { section: "race", property: "qualifyingPosition" },
-  "both drivers reach q3": {
-    section: "qualifying",
-    property: "q3Bonus",
-  },
-  "reach q3": { section: "qualifying", property: "q3Bonus" },
-  q3: { section: "qualifying", property: "q3Bonus" },
-  "both drivers reach q2": {
-    section: "qualifying",
-    property: "q2Bonus",
-  },
-  "reach q2": { section: "qualifying", property: "q2Bonus" },
-  q2: { section: "qualifying", property: "q2Bonus" },
-  "qualifying disqualified": {
-    section: "qualifying",
-    property: "disqualificationPenalty",
-    accumulate: true,
-  },
-  "sprint positions gained": {
-    section: "sprint",
-    property: "positionsGained",
-    accumulate: true,
-  },
-  "sprint positions lost": {
-    section: "sprint",
-    property: "positionsLost",
-    accumulate: true,
-  },
-  "sprint overtake": {
-    section: "sprint",
-    property: "overtakes",
-    accumulate: true,
-  },
-  "sprint fastest lap": { section: "sprint", property: "fastestLap" },
-  "sprint disqualified": {
-    section: "sprint",
-    property: "disqualificationPenalty",
-    accumulate: true,
-  },
-  "sprint position": { section: "sprint", property: "position" },
-};
-
-function applyConstructorEvent(sessionData, eventName, points) {
-  const normalized = eventName
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  let matched = false;
-  for (const [key, target] of Object.entries(CONSTRUCTOR_EVENT_MAP)) {
-    if (normalized.includes(key)) {
-      matched = true;
-      const { section, property, accumulate } = target;
-      if (sessionData[section]) {
-        if (accumulate) {
-          sessionData[section][property] += points;
-        } else {
-          sessionData[section][property] = points;
-        }
-      }
-      break;
-    }
-  }
-
-  if (!matched) {
-    console.log(`ℹ️ Unknown constructor event: ${eventName}`);
-  }
-}
 
 /**
  * Extract constructor data from the main list including position,
@@ -483,7 +376,7 @@ async function extractConstructorSessionData(raceElement) {
 
           // Map events to structure using lookup table
           if (eventName) {
-            applyConstructorEvent(sessionData, eventName, points);
+            applyEvent(sessionData, eventName, points, CONSTRUCTOR_EVENT_MAP);
           }
         }
       }
