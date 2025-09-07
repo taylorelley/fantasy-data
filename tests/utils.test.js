@@ -4,9 +4,37 @@ const { closePopup, emergencyClosePopup } = require("../src/utils");
 const { CONFIG } = require("../src/config");
 
 describe("closePopup", () => {
+  test("clicks essential cookies button when available", async () => {
+    const click = jest.fn();
+    const page = {
+      $$: jest
+        .fn()
+        .mockResolvedValue([
+          {
+            textContent: jest
+              .fn()
+              .mockResolvedValue("Use essential cookies only"),
+            click,
+          },
+        ]),
+      $: jest.fn(),
+      keyboard: { press: jest.fn() },
+      waitForTimeout: jest.fn(),
+    };
+
+    await closePopup(page);
+
+    expect(page.$$).toHaveBeenCalledWith("button");
+    expect(click).toHaveBeenCalled();
+    expect(page.$).not.toHaveBeenCalled();
+    expect(page.keyboard.press).not.toHaveBeenCalled();
+    expect(page.waitForTimeout).toHaveBeenCalledWith(CONFIG.DELAYS.POPUP_CLOSE);
+  });
+
   test("clicks close button when available", async () => {
     const click = jest.fn();
     const page = {
+      $$: jest.fn().mockResolvedValue([]),
       $: jest.fn().mockResolvedValue({ click }),
       keyboard: { press: jest.fn() },
       waitForTimeout: jest.fn(),
@@ -22,6 +50,7 @@ describe("closePopup", () => {
 
   test("presses escape when close button missing", async () => {
     const page = {
+      $$: jest.fn().mockResolvedValue([]),
       $: jest.fn().mockResolvedValue(null),
       keyboard: { press: jest.fn() },
       waitForTimeout: jest.fn(),
@@ -36,6 +65,7 @@ describe("closePopup", () => {
 
   test("presses escape when querying close button fails", async () => {
     const page = {
+      $$: jest.fn().mockResolvedValue([]),
       $: jest.fn().mockRejectedValue(new Error("fail")),
       keyboard: { press: jest.fn() },
       waitForTimeout: jest.fn(),
