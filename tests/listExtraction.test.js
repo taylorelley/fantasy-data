@@ -1,10 +1,7 @@
 /* eslint-env jest */
 /* global describe, test, expect, beforeEach */
-const { extractDriverListData, driverListData } = require("../src/drivers");
-const {
-  extractConstructorListData,
-  constructorListData,
-} = require("../src/constructors");
+const { DriverScraper } = require("../src/drivers");
+const { ConstructorScraper } = require("../src/constructors");
 
 function createElement(text) {
   return {
@@ -16,9 +13,12 @@ function createElement(text) {
 }
 
 describe("list data extraction", () => {
+  let driverScraper;
+  let constructorScraper;
+
   beforeEach(() => {
-    driverListData.clear();
-    constructorListData.clear();
+    driverScraper = new DriverScraper();
+    constructorScraper = new ConstructorScraper(new Map());
   });
 
   test("extractDriverListData detects driver rows based on structure", async () => {
@@ -34,7 +34,7 @@ describe("list data extraction", () => {
       createElement("90"),
     ];
     const page = { $$: async () => elements };
-    const drivers = await extractDriverListData(page);
+    const drivers = await driverScraper.extractListData(page);
     expect(drivers).toHaveLength(1);
     expect(drivers[0].name).toBe("Random Driver");
   });
@@ -50,7 +50,7 @@ describe("list data extraction", () => {
       createElement(""),
     ];
     const page = { $$: async () => elements };
-    const constructors = await extractConstructorListData(page);
+    const constructors = await constructorScraper.extractListData(page);
     expect(constructors).toHaveLength(1);
     expect(constructors[0].name).toBe("Unknown Team");
   });

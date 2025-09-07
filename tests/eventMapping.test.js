@@ -1,7 +1,7 @@
 /* eslint-env jest */
 /* global describe, test, expect, jest */
-const { extractSessionDataEnhanced } = require("../src/drivers");
-const { extractConstructorSessionData } = require("../src/constructors");
+const { DriverScraper } = require("../src/drivers");
+const { ConstructorScraper } = require("../src/constructors");
 const { applyEvent } = require("../src/eventMapper");
 const { DRIVER_EVENT_MAP } = require("../src/eventMaps");
 
@@ -84,19 +84,21 @@ describe("applyEvent", () => {
 
 describe("event mapping", () => {
   test("driver events map to the correct session sections", async () => {
+    const driverScraper = new DriverScraper();
     const rows = [
       createRow("Race Fastest Lap", "5"),
       createRow("Sprint Fastest Lap", "2"),
       createRow("Unknown Event", "1"),
     ];
     const element = createRaceElement(rows, true);
-    const data = await extractSessionDataEnhanced(element);
+    const data = await driverScraper.extractSessionDataEnhanced(element);
     expect(data.race.fastestLap).toBe(5);
     expect(data.sprint.fastestLap).toBe(2);
     expect(data.race.dotd).toBe(0);
   });
 
   test("constructor events use mapping table and ignore unknown", async () => {
+    const constructorScraper = new ConstructorScraper(new Map());
     const rows = [
       createRow("Pit Stop", "1"),
       createRow("Pit Stop", "1"),
@@ -104,7 +106,8 @@ describe("event mapping", () => {
       createRow("Random Unknown", "4"),
     ];
     const element = createRaceElement(rows);
-    const data = await extractConstructorSessionData(element);
+    const data =
+      await constructorScraper.extractConstructorSessionData(element);
     expect(data.race.pitStopBonus).toBe(2);
     expect(data.qualifying.q3Bonus).toBe(3);
     expect(data.race.position).toBe(0);
