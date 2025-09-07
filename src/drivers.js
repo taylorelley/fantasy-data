@@ -6,96 +6,14 @@ const {
   constructorSummaryData,
 } = require("./summary");
 const { closePopup, emergencyClosePopup } = require("./utils");
+const { applyEvent } = require("./eventMapper");
+const { DRIVER_EVENT_MAP } = require("./eventMaps");
 
 const RACE_ORDER_MAP = new Map();
 const driverBreakdowns = new Map();
 const processedDrivers = new Set();
 const teamSwapData = new Map();
 const driverListData = new Map();
-
-// Mapping of normalized event names to session sections and properties
-// Order matters for matching to ensure specific events are handled before generic ones
-const DRIVER_EVENT_MAP = {
-  "driver of the day": { section: "race", property: "dotd" },
-  "race positions gained": {
-    section: "race",
-    property: "positionsGained",
-    accumulate: true,
-  },
-  "race positions lost": {
-    section: "race",
-    property: "positionsLost",
-    accumulate: true,
-  },
-  "race overtake": {
-    section: "race",
-    property: "overtakeBonus",
-    accumulate: true,
-  },
-  "race fastest lap": { section: "race", property: "fastestLap" },
-  "race disqualified": {
-    section: "race",
-    property: "disqualificationPenalty",
-    accumulate: true,
-  },
-  "race position": { section: "race", property: "position" },
-  "qualifying position": { section: "qualifying", property: "position" },
-  "qualifying disqualified": {
-    section: "qualifying",
-    property: "disqualificationPenalty",
-    accumulate: true,
-  },
-  "sprint positions gained": {
-    section: "sprint",
-    property: "positionsGained",
-    accumulate: true,
-  },
-  "sprint positions lost": {
-    section: "sprint",
-    property: "positionsLost",
-    accumulate: true,
-  },
-  "sprint overtake": {
-    section: "sprint",
-    property: "overtakeBonus",
-    accumulate: true,
-  },
-  "sprint fastest lap": { section: "sprint", property: "fastestLap" },
-  "sprint disqualified": {
-    section: "sprint",
-    property: "disqualificationPenalty",
-    accumulate: true,
-  },
-  "sprint position": { section: "sprint", property: "position" },
-};
-
-function applyDriverEvent(sessionData, eventName, points) {
-  const normalized = eventName
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  let matched = false;
-  for (const [key, target] of Object.entries(DRIVER_EVENT_MAP)) {
-    if (normalized.includes(key)) {
-      matched = true;
-      const { section, property, accumulate } = target;
-      if (sessionData[section]) {
-        if (accumulate) {
-          sessionData[section][property] += points;
-        } else {
-          sessionData[section][property] = points;
-        }
-      }
-      break;
-    }
-  }
-
-  if (!matched) {
-    console.log(`ℹ️ Unknown driver event: ${eventName}`);
-  }
-}
 
 /**
  * Extract comprehensive driver data from the main driver list including
@@ -699,7 +617,7 @@ async function extractSessionDataEnhanced(raceElement) {
 
           // Map events to structure using lookup table
           if (eventName) {
-            applyDriverEvent(sessionData, eventName, points);
+            applyEvent(sessionData, eventName, points, DRIVER_EVENT_MAP);
           }
         }
       }
