@@ -1,5 +1,5 @@
 /* eslint-env jest */
-/* global describe, test, expect */
+/* global describe, test, expect, jest */
 const { extractSessionDataEnhanced } = require("../src/drivers");
 const { extractConstructorSessionData } = require("../src/constructors");
 const { applyEvent } = require("../src/eventMapper");
@@ -68,6 +68,17 @@ describe("applyEvent", () => {
     const sessionData = { race: { position: 0 } };
     applyEvent(sessionData, "Unknown Event", 4, DRIVER_EVENT_MAP);
     expect(sessionData.race.position).toBe(0);
+  });
+
+  test("logs unknown events", () => {
+    const sessionData = { race: {} };
+    const logSpy = jest.spyOn(console, "log").mockImplementation(() => {});
+
+    applyEvent(sessionData, "Mystery", 1, DRIVER_EVENT_MAP);
+
+    expect(logSpy).toHaveBeenCalledWith("ℹ️ Unknown event: Mystery");
+
+    logSpy.mockRestore();
   });
 });
 
