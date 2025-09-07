@@ -43,6 +43,30 @@ describe("summary ordering utilities", () => {
     expect(Object.keys(fixed)).toEqual(["1", "3"]);
   });
 
+  test("fixConstructorWeekendSummaryOrdering uses DEBUG env variable", async () => {
+    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "constructor-env-"));
+    const filePath = path.join(tmpDir, "constructor.json");
+    const unsortedJson = '{"3":{"b":1},"1":{"b":2}}';
+    await fs.writeFile(filePath, unsortedJson);
+
+    const originalEnv = process.env.DEBUG;
+    process.env.DEBUG = "true";
+    jest.resetModules();
+    const {
+      fixConstructorWeekendSummaryOrdering: fn,
+    } = require("../src/summary");
+    process.env.DEBUG = "false";
+
+    const logSpy = jest.spyOn(console, "log").mockImplementation(() => {});
+    await fn(filePath);
+    const messages = logSpy.mock.calls.map((call) => call[0]);
+    expect(messages).toContainEqual(
+      expect.stringContaining("Keys in original file"),
+    );
+    logSpy.mockRestore();
+    process.env.DEBUG = originalEnv;
+  });
+
   test("fixWeekendSummaryOrdering logs errors", async () => {
     const readSpy = jest
       .spyOn(fs, "readFile")
