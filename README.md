@@ -85,6 +85,10 @@ npm run lint
 npm test
 ```
 
+## Test Coverage
+
+Current line coverage: 38.18% (measured with `npx jest --coverage`).
+
 ### Debug logging
 
 Verbose logging for some utilities can be toggled with a `DEBUG` flag. Set it to `true` to print additional output, for example:
