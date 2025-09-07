@@ -30,6 +30,26 @@ node src/main.js
 
 The behaviour of the scraper (headless mode, delays, URLs) can be customised in [`src/config.js`](src/config.js).
 
+### API server
+
+An Express server can expose the generated JSON data:
+
+```bash
+npm start
+```
+
+By default it serves content from the `latest/` folder and listens on port `3000`. Environment variables can change these values:
+
+```bash
+PORT=4000 DATA_DIR=/path/to/data npm start
+```
+
+Endpoints:
+
+- `GET /drivers` – list driver JSON objects
+- `GET /constructors` – list constructor JSON objects
+- `GET /summary` – combined summary JSON files
+
 ## Output
 
 After a successful run the script writes data to a folder named after the most recent race and mirrors it into `latest/`:
