@@ -13,6 +13,90 @@ const processedDrivers = new Set();
 const teamSwapData = new Map();
 const driverListData = new Map();
 
+// Mapping of normalized event names to session sections and properties
+// Order matters for matching to ensure specific events are handled before generic ones
+const DRIVER_EVENT_MAP = {
+  "driver of the day": { section: "race", property: "dotd" },
+  "race positions gained": {
+    section: "race",
+    property: "positionsGained",
+    accumulate: true,
+  },
+  "race positions lost": {
+    section: "race",
+    property: "positionsLost",
+    accumulate: true,
+  },
+  "race overtake": {
+    section: "race",
+    property: "overtakeBonus",
+    accumulate: true,
+  },
+  "race fastest lap": { section: "race", property: "fastestLap" },
+  "race disqualified": {
+    section: "race",
+    property: "disqualificationPenalty",
+    accumulate: true,
+  },
+  "race position": { section: "race", property: "position" },
+  "qualifying position": { section: "qualifying", property: "position" },
+  "qualifying disqualified": {
+    section: "qualifying",
+    property: "disqualificationPenalty",
+    accumulate: true,
+  },
+  "sprint positions gained": {
+    section: "sprint",
+    property: "positionsGained",
+    accumulate: true,
+  },
+  "sprint positions lost": {
+    section: "sprint",
+    property: "positionsLost",
+    accumulate: true,
+  },
+  "sprint overtake": {
+    section: "sprint",
+    property: "overtakeBonus",
+    accumulate: true,
+  },
+  "sprint fastest lap": { section: "sprint", property: "fastestLap" },
+  "sprint disqualified": {
+    section: "sprint",
+    property: "disqualificationPenalty",
+    accumulate: true,
+  },
+  "sprint position": { section: "sprint", property: "position" },
+};
+
+function applyDriverEvent(sessionData, eventName, points) {
+  const normalized = eventName
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  let matched = false;
+  for (const [key, target] of Object.entries(DRIVER_EVENT_MAP)) {
+    if (normalized.includes(key)) {
+      matched = true;
+      const { section, property, accumulate } = target;
+      if (sessionData[section]) {
+        if (accumulate) {
+          sessionData[section][property] += points;
+        } else {
+          sessionData[section][property] = points;
+        }
+      }
+      break;
+    }
+  }
+
+  if (!matched) {
+    console.log(`ℹ️ Unknown driver event: ${eventName}`);
+  }
+}
+
 /**
  * Extract comprehensive driver data from main list including teams, positions, costs
  */
@@ -586,89 +670,9 @@ async function extractSessionDataEnhanced(raceElement) {
             }
           }
 
-          // Map events to structure
-          const eventLower = eventName?.toLowerCase() || "";
-
-          // Driver-specific events
-          if (eventLower.includes("driver of the day")) {
-            sessionData.race.dotd = points;
-          } else if (
-            eventLower.includes("race position") &&
-            !eventLower.includes("gained") &&
-            !eventLower.includes("lost")
-          ) {
-            sessionData.race.position = points;
-          } else if (eventLower.includes("race fastest lap")) {
-            sessionData.race.fastestLap = points;
-          } else if (
-            eventLower.includes("race positions gained") ||
-            (eventLower.includes("race") &&
-              eventLower.includes("positions gained"))
-          ) {
-            sessionData.race.positionsGained += points;
-          } else if (
-            eventLower.includes("race positions lost") ||
-            (eventLower.includes("race") &&
-              eventLower.includes("positions lost"))
-          ) {
-            sessionData.race.positionsLost += points;
-          } else if (
-            eventLower.includes("race overtake") ||
-            (eventLower.includes("race") && eventLower.includes("overtake"))
-          ) {
-            sessionData.race.overtakeBonus += points;
-          } else if (
-            eventLower.includes("race") &&
-            eventLower.includes("disqualified")
-          ) {
-            sessionData.race.disqualificationPenalty += points;
-
-            // Qualifying events
-          } else if (
-            eventLower.includes("qualifying position") ||
-            (eventLower.includes("qualifying") &&
-              eventLower.includes("position"))
-          ) {
-            sessionData.qualifying.position = points;
-          } else if (
-            eventLower.includes("qualifying") &&
-            eventLower.includes("disqualified")
-          ) {
-            sessionData.qualifying.disqualificationPenalty += points;
-
-            // Sprint events
-          } else if (
-            eventLower.includes("sprint position") &&
-            !eventLower.includes("gained") &&
-            !eventLower.includes("lost")
-          ) {
-            if (sessionData.sprint) sessionData.sprint.position = points;
-          } else if (eventLower.includes("sprint fastest lap")) {
-            if (sessionData.sprint) sessionData.sprint.fastestLap = points;
-          } else if (
-            eventLower.includes("sprint positions gained") ||
-            (eventLower.includes("sprint") &&
-              eventLower.includes("positions gained"))
-          ) {
-            if (sessionData.sprint)
-              sessionData.sprint.positionsGained += points;
-          } else if (
-            eventLower.includes("sprint positions lost") ||
-            (eventLower.includes("sprint") &&
-              eventLower.includes("positions lost"))
-          ) {
-            if (sessionData.sprint) sessionData.sprint.positionsLost += points;
-          } else if (
-            eventLower.includes("sprint overtake") ||
-            (eventLower.includes("sprint") && eventLower.includes("overtake"))
-          ) {
-            if (sessionData.sprint) sessionData.sprint.overtakeBonus += points;
-          } else if (
-            eventLower.includes("sprint") &&
-            eventLower.includes("disqualified")
-          ) {
-            if (sessionData.sprint)
-              sessionData.sprint.disqualificationPenalty += points;
+          // Map events to structure using lookup table
+          if (eventName) {
+            applyDriverEvent(sessionData, eventName, points);
           }
         }
       }
@@ -685,6 +689,7 @@ module.exports = {
   processAllDrivers,
   processDriver,
   mergeTeamSwapDrivers,
+  extractSessionDataEnhanced,
   driverBreakdowns,
   teamSwapData,
   driverListData,

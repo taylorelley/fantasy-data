@@ -8,6 +8,115 @@ const constructorBreakdowns = new Map();
 const processedConstructors = new Set();
 const constructorListData = new Map();
 
+// Mapping of normalized event names to session sections and properties
+// Order is important to ensure specific phrases match before generic ones
+const CONSTRUCTOR_EVENT_MAP = {
+  "race positions gained": {
+    section: "race",
+    property: "positionsGained",
+    accumulate: true,
+  },
+  "race positions lost": {
+    section: "race",
+    property: "positionsLost",
+    accumulate: true,
+  },
+  "race overtake": {
+    section: "race",
+    property: "overtakes",
+    accumulate: true,
+  },
+  "race fastest lap": { section: "race", property: "fastestLap" },
+  "fastest pit stop": { section: "race", property: "fastestPitStop" },
+  "fastest pitstop": { section: "race", property: "fastestPitStop" },
+  "pitstop world record": { section: "race", property: "worldRecordBonus" },
+  "world record": { section: "race", property: "worldRecordBonus" },
+  "pit stop": {
+    section: "race",
+    property: "pitStopBonus",
+    accumulate: true,
+  },
+  pitstop: {
+    section: "race",
+    property: "pitStopBonus",
+    accumulate: true,
+  },
+  "race disqualified": {
+    section: "race",
+    property: "disqualificationPenalty",
+    accumulate: true,
+  },
+  "race position": { section: "race", property: "position" },
+  "qualifying position": { section: "race", property: "qualifyingPosition" },
+  "both drivers reach q3": {
+    section: "qualifying",
+    property: "q3Bonus",
+  },
+  "reach q3": { section: "qualifying", property: "q3Bonus" },
+  q3: { section: "qualifying", property: "q3Bonus" },
+  "both drivers reach q2": {
+    section: "qualifying",
+    property: "q2Bonus",
+  },
+  "reach q2": { section: "qualifying", property: "q2Bonus" },
+  q2: { section: "qualifying", property: "q2Bonus" },
+  "qualifying disqualified": {
+    section: "qualifying",
+    property: "disqualificationPenalty",
+    accumulate: true,
+  },
+  "sprint positions gained": {
+    section: "sprint",
+    property: "positionsGained",
+    accumulate: true,
+  },
+  "sprint positions lost": {
+    section: "sprint",
+    property: "positionsLost",
+    accumulate: true,
+  },
+  "sprint overtake": {
+    section: "sprint",
+    property: "overtakes",
+    accumulate: true,
+  },
+  "sprint fastest lap": { section: "sprint", property: "fastestLap" },
+  "sprint disqualified": {
+    section: "sprint",
+    property: "disqualificationPenalty",
+    accumulate: true,
+  },
+  "sprint position": { section: "sprint", property: "position" },
+};
+
+function applyConstructorEvent(sessionData, eventName, points) {
+  const normalized = eventName
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  let matched = false;
+  for (const [key, target] of Object.entries(CONSTRUCTOR_EVENT_MAP)) {
+    if (normalized.includes(key)) {
+      matched = true;
+      const { section, property, accumulate } = target;
+      if (sessionData[section]) {
+        if (accumulate) {
+          sessionData[section][property] += points;
+        } else {
+          sessionData[section][property] = points;
+        }
+      }
+      break;
+    }
+  }
+
+  if (!matched) {
+    console.log(`ℹ️ Unknown constructor event: ${eventName}`);
+  }
+}
+
 async function extractConstructorListData(page) {
   console.log("🔍 Extracting constructor list data...");
 
@@ -352,120 +461,9 @@ async function extractConstructorSessionData(raceElement) {
             }
           }
 
-          // Map events to structure - constructor specific events
-          const eventLower = eventName?.toLowerCase() || "";
-
-          // Race events
-          if (
-            eventLower.includes("race position") &&
-            !eventLower.includes("gained") &&
-            !eventLower.includes("lost")
-          ) {
-            sessionData.race.position = points;
-          } else if (eventLower.includes("race fastest lap")) {
-            sessionData.race.fastestLap = points;
-          } else if (
-            eventLower.includes("fastest pit stop") ||
-            eventLower.includes("fastest pitstop")
-          ) {
-            sessionData.race.fastestPitStop = points;
-          } else if (
-            eventLower.includes("world record") ||
-            eventLower.includes("pitstop world record")
-          ) {
-            sessionData.race.worldRecordBonus = points;
-          } else if (
-            eventLower.includes("pit stop") ||
-            eventLower.includes("pitstop")
-          ) {
-            sessionData.race.pitStopBonus += points;
-          } else if (
-            eventLower.includes("race positions gained") ||
-            (eventLower.includes("race") &&
-              eventLower.includes("positions gained"))
-          ) {
-            sessionData.race.positionsGained += points;
-          } else if (
-            eventLower.includes("race positions lost") ||
-            (eventLower.includes("race") &&
-              eventLower.includes("positions lost"))
-          ) {
-            sessionData.race.positionsLost += points;
-          } else if (
-            eventLower.includes("race overtake") ||
-            (eventLower.includes("race") && eventLower.includes("overtake"))
-          ) {
-            sessionData.race.overtakes += points;
-          } else if (
-            eventLower.includes("race") &&
-            eventLower.includes("disqualified")
-          ) {
-            sessionData.race.disqualificationPenalty += points;
-
-            // Qualifying events
-          } else if (
-            eventLower.includes("qualifying") &&
-            !eventLower.includes("position")
-          ) {
-            // Handle Q2/Q3 bonuses
-            if (
-              eventLower.includes("q2") ||
-              eventLower.includes("reach q2") ||
-              eventLower.includes("both drivers reach q2")
-            ) {
-              sessionData.qualifying.q2Bonus = points;
-            } else if (
-              eventLower.includes("q3") ||
-              eventLower.includes("reach q3") ||
-              eventLower.includes("both drivers reach q3")
-            ) {
-              sessionData.qualifying.q3Bonus = points;
-            }
-          } else if (
-            eventLower.includes("qualifying position") ||
-            (eventLower.includes("qualifying") &&
-              eventLower.includes("position"))
-          ) {
-            sessionData.race.qualifyingPosition = points;
-          } else if (
-            eventLower.includes("qualifying") &&
-            eventLower.includes("disqualified")
-          ) {
-            sessionData.qualifying.disqualificationPenalty += points;
-
-            // Sprint events
-          } else if (
-            eventLower.includes("sprint position") &&
-            !eventLower.includes("gained") &&
-            !eventLower.includes("lost")
-          ) {
-            if (sessionData.sprint) sessionData.sprint.position = points;
-          } else if (eventLower.includes("sprint fastest lap")) {
-            if (sessionData.sprint) sessionData.sprint.fastestLap = points;
-          } else if (
-            eventLower.includes("sprint positions gained") ||
-            (eventLower.includes("sprint") &&
-              eventLower.includes("positions gained"))
-          ) {
-            if (sessionData.sprint)
-              sessionData.sprint.positionsGained += points;
-          } else if (
-            eventLower.includes("sprint positions lost") ||
-            (eventLower.includes("sprint") &&
-              eventLower.includes("positions lost"))
-          ) {
-            if (sessionData.sprint) sessionData.sprint.positionsLost += points;
-          } else if (
-            eventLower.includes("sprint overtake") ||
-            (eventLower.includes("sprint") && eventLower.includes("overtake"))
-          ) {
-            if (sessionData.sprint) sessionData.sprint.overtakes += points;
-          } else if (
-            eventLower.includes("sprint") &&
-            eventLower.includes("disqualified")
-          ) {
-            if (sessionData.sprint)
-              sessionData.sprint.disqualificationPenalty += points;
+          // Map events to structure using lookup table
+          if (eventName) {
+            applyConstructorEvent(sessionData, eventName, points);
           }
         }
       }
@@ -480,6 +478,7 @@ module.exports = {
   extractConstructorListData,
   processAllConstructors,
   processConstructor,
+  extractConstructorSessionData,
   constructorBreakdowns,
   constructorListData,
   processedConstructors,
