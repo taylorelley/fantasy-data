@@ -65,25 +65,7 @@ npm run lint
 npm test
 ```
 
-## Data access
-
-The most recent JSON output is published in the repository:
-
-```
-https://raw.githubusercontent.com/JoshCBruce/fantasy-data/refs/heads/main/latest/driver_data/{ABBREVIATION}.json
-https://raw.githubusercontent.com/JoshCBruce/fantasy-data/refs/heads/main/latest/constructor_data/{ABBREVIATION}.json
-https://raw.githubusercontent.com/JoshCBruce/fantasy-data/refs/heads/main/latest/summary_data/weekend_summary.json
-https://raw.githubusercontent.com/JoshCBruce/fantasy-data/refs/heads/main/latest/summary_data/constructor_weekend_summary.json
-https://raw.githubusercontent.com/JoshCBruce/fantasy-data/refs/heads/main/latest/summary_data/extraction_summary.json
-https://raw.githubusercontent.com/JoshCBruce/fantasy-data/refs/heads/main/latest/summary_data/team_summary.json
-https://raw.githubusercontent.com/JoshCBruce/fantasy-data/refs/heads/main/latest/summary_data/percentage_picked_ranking.json
-https://raw.githubusercontent.com/JoshCBruce/fantasy-data/refs/heads/main/latest/summary_data/constructor_percentage_picked_ranking.json
-```
 
 ## Contributing
 
 Please ensure changes include tests and pass `npm run lint` and `npm test` before submitting a pull request.
-
-## License
-
-ISC
