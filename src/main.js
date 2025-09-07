@@ -2,18 +2,14 @@ const { chromium } = require("playwright");
 const fs = require("fs").promises;
 const path = require("path");
 const { CONFIG } = require("./config");
-const {
-  extractDriverListData,
-  establishRaceOrder,
-  processAllDrivers,
-  mergeTeamSwapDrivers,
-  driverBreakdowns,
-} = require("./drivers");
-const {
-  extractConstructorListData,
-  processAllConstructors,
-  constructorBreakdowns,
-} = require("./constructors");
+const { DriverScraper } = require("./drivers");
+const { ConstructorScraper } = require("./constructors");
+
+// Instantiate scrapers so their internal data structures can be reused
+const driverScraper = new DriverScraper();
+const constructorScraper = new ConstructorScraper(
+  driverScraper.getRaceOrderMap(),
+);
 const {
   summaryData,
   constructorSummaryData,
@@ -38,17 +34,15 @@ async function main() {
     await page.goto(CONFIG.DRIVER_URL, { waitUntil: "load" });
     await page.waitForTimeout(CONFIG.DELAYS.PAGE_LOAD);
 
-    const driverElements = await extractDriverListData(page);
-    const raceOrderDriverIndex = await establishRaceOrder(page, driverElements);
-    await processAllDrivers(page, driverElements, raceOrderDriverIndex);
-    await mergeTeamSwapDrivers();
+    const driverElements = await driverScraper.extractListData(page);
+    await driverScraper.processAll(page, driverElements);
 
     console.log(`📊 Target: ${CONFIG.CONSTRUCTOR_URL}`);
     await page.goto(CONFIG.CONSTRUCTOR_URL, { waitUntil: "load" });
     await page.waitForTimeout(CONFIG.DELAYS.PAGE_LOAD);
 
-    const constructorElements = await extractConstructorListData(page);
-    await processAllConstructors(page, constructorElements);
+    const constructorElements = await constructorScraper.extractListData(page);
+    await constructorScraper.processAll(page, constructorElements);
 
     await saveResults();
   } catch (error) {
@@ -62,7 +56,7 @@ function getMostRecentRace() {
   let maxRound = 0;
   let mostRecentRace = { round: "0", raceName: "Unknown" };
 
-  for (const driver of driverBreakdowns.values()) {
+  for (const driver of driverScraper.getBreakdowns().values()) {
     for (const race of driver.races) {
       const roundNum = parseInt(race.round);
       if (roundNum > maxRound) {
@@ -165,7 +159,10 @@ async function saveResults() {
   await fs.mkdir(latestRaceDir, { recursive: true });
   await fs.mkdir(latestSummaryDir, { recursive: true });
 
-  const raceData = organizeRaceData(driverBreakdowns, constructorBreakdowns);
+  const raceData = organizeRaceData(
+    driverScraper.getBreakdowns(),
+    constructorScraper.getBreakdowns(),
+  );
   for (const [round, data] of Object.entries(raceData)) {
     const safeName = data.raceName.replace(/[^a-z0-9]+/gi, "_").toLowerCase();
     const filename = `${round}-${safeName}.json`;
@@ -255,35 +252,36 @@ async function saveResults() {
     path.join(latestSummaryDir, "constructor_weekend_summary.json"),
   );
 
+  const driverBreaks = driverScraper.getBreakdowns();
+  const constructorBreaks = constructorScraper.getBreakdowns();
   const detailedSummary = {
-    totalDrivers: driverBreakdowns.size,
-    totalConstructors: constructorBreakdowns.size,
-    teamSwapDrivers: Array.from(driverBreakdowns.values()).filter(
-      (d) => d.teamSwap,
-    ).length,
-    totalRaces: Array.from(driverBreakdowns.values()).reduce(
+    totalDrivers: driverBreaks.size,
+    totalConstructors: constructorBreaks.size,
+    teamSwapDrivers: Array.from(driverBreaks.values()).filter((d) => d.teamSwap)
+      .length,
+    totalRaces: Array.from(driverBreaks.values()).reduce(
       (sum, d) => sum + d.races.length,
       0,
     ),
     averageDriverPoints:
-      driverBreakdowns.size > 0
+      driverBreaks.size > 0
         ? Math.round(
-            Array.from(driverBreakdowns.values()).reduce(
+            Array.from(driverBreaks.values()).reduce(
               (sum, d) => sum + d.seasonTotalPoints,
               0,
-            ) / driverBreakdowns.size,
+            ) / driverBreaks.size,
           )
         : 0,
     averageConstructorPoints:
-      constructorBreakdowns.size > 0
+      constructorBreaks.size > 0
         ? Math.round(
-            Array.from(constructorBreakdowns.values()).reduce(
+            Array.from(constructorBreaks.values()).reduce(
               (sum, c) => sum + c.seasonTotalPoints,
               0,
-            ) / constructorBreakdowns.size,
+            ) / constructorBreaks.size,
           )
         : 0,
-    drivers: Array.from(driverBreakdowns.values())
+    drivers: Array.from(driverBreaks.values())
       .map((d) => ({
         abbreviation: d.abbreviation,
         name: d.displayName,
@@ -294,7 +292,7 @@ async function saveResults() {
         position: d.position,
       }))
       .sort((a, b) => a.position - b.position),
-    constructors: Array.from(constructorBreakdowns.values())
+    constructors: Array.from(constructorBreaks.values())
       .map((c) => ({
         abbreviation: c.abbreviation,
         name: c.name,
@@ -318,7 +316,7 @@ async function saveResults() {
   console.log("✅ Extraction summary saved: extraction_summary.json");
 
   const teamSummary = {};
-  Array.from(driverBreakdowns.values()).forEach((driver) => {
+  Array.from(driverScraper.getBreakdowns().values()).forEach((driver) => {
     if (!teamSummary[driver.team]) {
       teamSummary[driver.team] = {
         drivers: [],
@@ -361,7 +359,7 @@ async function saveResults() {
   console.log("✅ Team summary saved: team_summary.json");
 
   const percentagePickedRanking = {};
-  Array.from(driverBreakdowns.values())
+  Array.from(driverScraper.getBreakdowns().values())
     .sort((a, b) => b.percentagePicked - a.percentagePicked)
     .forEach((driver) => {
       percentagePickedRanking[driver.abbreviation] = driver.percentagePicked;
@@ -382,7 +380,7 @@ async function saveResults() {
   );
 
   const constructorPercentagePickedRanking = {};
-  Array.from(constructorBreakdowns.values())
+  Array.from(constructorScraper.getBreakdowns().values())
     .sort((a, b) => b.percentagePicked - a.percentagePicked)
     .forEach((constructor) => {
       constructorPercentagePickedRanking[constructor.abbreviation] =
