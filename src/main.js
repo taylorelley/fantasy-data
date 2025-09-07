@@ -22,6 +22,11 @@ const {
   getSortedRoundKeys,
 } = require("./summary");
 
+/**
+ * Entry point for scraping driver and constructor data and saving results.
+ *
+ * @returns {Promise<void>} Resolves when scraping is complete
+ */
 async function main() {
   const browser = await chromium.launch({ headless: CONFIG.BROWSER_HEADLESS });
   const page = await browser.newPage();
@@ -70,6 +75,13 @@ function getMostRecentRace() {
   return mostRecentRace;
 }
 
+/**
+ * Combine driver and constructor maps into a structure organized by race.
+ *
+ * @param {Map<string, object>} driverMap Map of driver breakdowns
+ * @param {Map<string, object>} constructorMap Map of constructor breakdowns
+ * @returns {object} Object keyed by round with race data
+ */
 function organizeRaceData(driverMap, constructorMap) {
   const raceMap = new Map();
 

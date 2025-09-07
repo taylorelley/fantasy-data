@@ -3,10 +3,22 @@ const fs = require("fs").promises;
 const summaryData = new Map();
 const constructorSummaryData = new Map();
 
+/**
+ * Return the numeric-sorted round keys from a data object.
+ *
+ * @param {object} data Object keyed by round numbers
+ * @returns {Array<string>} Sorted list of round keys
+ */
 function getSortedRoundKeys(data) {
   return Object.keys(data).sort((a, b) => Number(a) - Number(b));
 }
 
+/**
+ * Ensure a driver weekend summary JSON file has its rounds in ascending order.
+ *
+ * @param {string} filePath Path to the summary JSON file
+ * @returns {Promise<void>} Resolves when the file has been reordered
+ */
 async function fixWeekendSummaryOrdering(filePath) {
   try {
     const fileContent = await fs.readFile(filePath, "utf8");
@@ -25,6 +37,12 @@ async function fixWeekendSummaryOrdering(filePath) {
   }
 }
 
+/**
+ * Ensure a constructor weekend summary JSON file has its rounds in ascending order.
+ *
+ * @param {string} filePath Path to the constructor summary JSON file
+ * @returns {Promise<void>} Resolves when the file has been reordered
+ */
 async function fixConstructorWeekendSummaryOrdering(filePath) {
   try {
     const fileContent = await fs.readFile(filePath, "utf8");
@@ -48,6 +66,12 @@ async function fixConstructorWeekendSummaryOrdering(filePath) {
   }
 }
 
+/**
+ * Update the driver summary map with data from a driver's race results.
+ *
+ * @param {object} driverData Driver data including race results
+ * @returns {void}
+ */
 function updateSummaryData(driverData) {
   for (const race of driverData.races) {
     if (!summaryData.has(race.round)) {
@@ -62,6 +86,12 @@ function updateSummaryData(driverData) {
   }
 }
 
+/**
+ * Update the constructor summary map with race results for a constructor.
+ *
+ * @param {object} constructorData Constructor data including race results
+ * @returns {void}
+ */
 function updateConstructorSummaryData(constructorData) {
   for (const race of constructorData.races) {
     if (!constructorSummaryData.has(race.round)) {

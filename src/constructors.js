@@ -117,6 +117,13 @@ function applyConstructorEvent(sessionData, eventName, points) {
   }
 }
 
+/**
+ * Extract constructor data from the main list including position,
+ * cost and points.
+ *
+ * @param {import('playwright').Page} page Playwright page instance
+ * @returns {Promise<Array<object>>} Array of constructor metadata objects
+ */
 async function extractConstructorListData(page) {
   console.log("🔍 Extracting constructor list data...");
 
@@ -180,7 +187,11 @@ async function extractConstructorListData(page) {
 }
 
 /**
- * Process all constructors
+ * Process all constructors, extracting detailed data for each entry.
+ *
+ * @param {import('playwright').Page} page Playwright page instance
+ * @param {Array<object>} constructorElements Array of constructor metadata objects
+ * @returns {Promise<void>} Resolves when all constructors have been processed
  */
 async function processAllConstructors(page, constructorElements) {
   console.log(`🏗️  Processing ${constructorElements.length} constructors...`);
@@ -200,7 +211,12 @@ async function processAllConstructors(page, constructorElements) {
 }
 
 /**
- * Process individual constructor data extraction
+ * Process data extraction for a single constructor.
+ *
+ * @param {import('playwright').Page} page Playwright page instance
+ * @param {object} constructorData Metadata about the constructor
+ * @param {number} index Index of the constructor in the list
+ * @returns {Promise<void>} Resolves when the constructor has been processed
  */
 async function processConstructor(page, constructorData, index) {
   try {
@@ -395,7 +411,11 @@ async function extractConstructorDataEnhanced(page, listConstructorData) {
 }
 
 /**
- * Extract constructor session data for races and sprints
+ * Extract detailed session data for a constructor including race,
+ * qualifying and sprint results.
+ *
+ * @param {import('playwright').ElementHandle} raceElement DOM element for a race
+ * @returns {Promise<object>} Structured session data
  */
 async function extractConstructorSessionData(raceElement) {
   const sessionData = {
