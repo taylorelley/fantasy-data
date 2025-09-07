@@ -1,7 +1,46 @@
 /* eslint-env jest */
 /* global jest, describe, test, expect */
-const { closePopup, emergencyClosePopup } = require("../src/utils");
+const {
+  closePopup,
+  emergencyClosePopup,
+  handleCookieConsent,
+} = require("../src/utils");
 const { CONFIG } = require("../src/config");
+
+describe("handleCookieConsent", () => {
+  test("clicks essential only cookies button in iframe", async () => {
+    const iframe = { click: jest.fn().mockResolvedValue() };
+    const iframeElement = {
+      contentFrame: jest.fn().mockResolvedValue(iframe),
+    };
+    const page = {
+      $: jest.fn().mockResolvedValue(iframeElement),
+      waitForTimeout: jest.fn(),
+    };
+
+    await handleCookieConsent(page);
+
+    expect(page.$).toHaveBeenCalledWith("#sp_message_iframe_1336275");
+    expect(iframeElement.contentFrame).toHaveBeenCalled();
+    expect(iframe.click).toHaveBeenCalledWith(
+      'button:has-text("Essential only cookies")',
+      { timeout: 3000 },
+    );
+    expect(page.waitForTimeout).toHaveBeenCalledWith(2000);
+  });
+
+  test("does nothing if iframe is missing", async () => {
+    const page = {
+      $: jest.fn().mockResolvedValue(null),
+      waitForTimeout: jest.fn(),
+    };
+
+    await handleCookieConsent(page);
+
+    expect(page.$).toHaveBeenCalledWith("#sp_message_iframe_1336275");
+    expect(page.waitForTimeout).not.toHaveBeenCalled();
+  });
+});
 
 describe("closePopup", () => {
   test("clicks reject in Sourcepoint frame when available", async () => {
@@ -36,11 +75,9 @@ describe("closePopup", () => {
       getByRole: jest.fn().mockReturnValue({ first: () => failingButton }),
     };
     const otFrame = {
-      locator: jest
-        .fn()
-        .mockReturnValue({
-          first: () => ({ isVisible: jest.fn().mockResolvedValue(false) }),
-        }),
+      locator: jest.fn().mockReturnValue({
+        first: () => ({ isVisible: jest.fn().mockResolvedValue(false) }),
+      }),
     };
     const genericButton = {
       waitFor: jest.fn().mockResolvedValue(),
@@ -51,11 +88,9 @@ describe("closePopup", () => {
         .fn()
         .mockReturnValueOnce(spFrame)
         .mockReturnValueOnce(otFrame),
-      locator: jest
-        .fn()
-        .mockReturnValue({
-          first: () => ({ isVisible: jest.fn().mockResolvedValue(false) }),
-        }),
+      locator: jest.fn().mockReturnValue({
+        first: () => ({ isVisible: jest.fn().mockResolvedValue(false) }),
+      }),
       getByRole: jest.fn().mockReturnValue({ first: () => genericButton }),
       waitForTimeout: jest.fn(),
       keyboard: { press: jest.fn() },
@@ -78,22 +113,18 @@ describe("closePopup", () => {
       getByRole: jest.fn().mockReturnValue({ first: () => failingButton }),
     };
     const otFrame = {
-      locator: jest
-        .fn()
-        .mockReturnValue({
-          first: () => ({ isVisible: jest.fn().mockResolvedValue(false) }),
-        }),
+      locator: jest.fn().mockReturnValue({
+        first: () => ({ isVisible: jest.fn().mockResolvedValue(false) }),
+      }),
     };
     const page = {
       frameLocator: jest
         .fn()
         .mockReturnValueOnce(spFrame)
         .mockReturnValueOnce(otFrame),
-      locator: jest
-        .fn()
-        .mockReturnValue({
-          first: () => ({ isVisible: jest.fn().mockResolvedValue(false) }),
-        }),
+      locator: jest.fn().mockReturnValue({
+        first: () => ({ isVisible: jest.fn().mockResolvedValue(false) }),
+      }),
       getByRole: jest.fn().mockReturnValue({ first: () => failingButton }),
       waitForTimeout: jest.fn(),
       keyboard: { press: jest.fn() },

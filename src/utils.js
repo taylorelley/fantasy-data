@@ -1,5 +1,23 @@
 const { CONFIG } = require("./config");
 
+async function handleCookieConsent(page) {
+  try {
+    const iframeElement = await page.$("#sp_message_iframe_1336275");
+    if (iframeElement) {
+      const iframe = await iframeElement.contentFrame();
+      if (iframe) {
+        await iframe.click('button:has-text("Essential only cookies")', {
+          timeout: 3000,
+        });
+        console.log("✅ Cookie consent handled");
+        await page.waitForTimeout(2000);
+      }
+    }
+  } catch (e) {
+    console.log("ℹ️  No cookie consent dialog");
+  }
+}
+
 async function closePopup(page, delays = CONFIG.DELAYS) {
   // Helper to click a visible button by accessible name
   const clickByRole = async (scope, nameRe, timeout = 2000) => {
@@ -120,4 +138,4 @@ async function emergencyClosePopup(page) {
   }
 }
 
-module.exports = { closePopup, emergencyClosePopup };
+module.exports = { closePopup, emergencyClosePopup, handleCookieConsent };
