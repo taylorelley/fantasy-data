@@ -70,6 +70,60 @@ function getMostRecentRace() {
   return mostRecentRace;
 }
 
+function organizeRaceData(driverMap, constructorMap) {
+  const raceMap = new Map();
+
+  for (const [, driver] of driverMap) {
+    for (const race of driver.races) {
+      if (!raceMap.has(race.round)) {
+        raceMap.set(race.round, {
+          round: race.round,
+          raceName: race.raceName,
+          drivers: {},
+          constructors: {},
+        });
+      }
+      raceMap.get(race.round).drivers[driver.abbreviation] = {
+        abbreviation: driver.abbreviation,
+        name: driver.displayName,
+        team: driver.team,
+        value: driver.value,
+        percentagePicked: driver.percentagePicked,
+        position: driver.position,
+        ...race,
+      };
+    }
+  }
+
+  for (const [, constructor] of constructorMap) {
+    for (const race of constructor.races) {
+      if (!raceMap.has(race.round)) {
+        raceMap.set(race.round, {
+          round: race.round,
+          raceName: race.raceName,
+          drivers: {},
+          constructors: {},
+        });
+      }
+      raceMap.get(race.round).constructors[constructor.abbreviation] = {
+        abbreviation: constructor.abbreviation,
+        name: constructor.name,
+        percentagePicked: constructor.percentagePicked,
+        position: constructor.position,
+        ...race,
+      };
+    }
+  }
+
+  const sorted = {};
+  for (const round of Array.from(raceMap.keys()).sort(
+    (a, b) => Number(a) - Number(b),
+  )) {
+    sorted[round] = raceMap.get(round);
+  }
+  return sorted;
+}
+
 async function saveResults() {
   console.log("\n💾 Saving results...");
 
@@ -77,12 +131,10 @@ async function saveResults() {
   const versionFolder = `${mostRecentRace.round}-${mostRecentRace.raceName}`;
   const latestFolder = "latest";
 
-  const versionedOutputDir = path.join(versionFolder, "driver_data");
-  const versionedConstructorDir = path.join(versionFolder, "constructor_data");
+  const versionedRaceDir = path.join(versionFolder, "race_data");
   const versionedSummaryDir = path.join(versionFolder, "summary_data");
 
-  const latestOutputDir = path.join(latestFolder, "driver_data");
-  const latestConstructorDir = path.join(latestFolder, "constructor_data");
+  const latestRaceDir = path.join(latestFolder, "race_data");
   const latestSummaryDir = path.join(latestFolder, "summary_data");
 
   console.log(`📁 Exporting to versioned folder: ${versionFolder}/`);
@@ -95,40 +147,23 @@ async function saveResults() {
     console.error("⚠️ Error removing output directories:", e.message);
   }
 
-  await fs.mkdir(versionedOutputDir, { recursive: true });
-  await fs.mkdir(versionedConstructorDir, { recursive: true });
+  await fs.mkdir(versionedRaceDir, { recursive: true });
   await fs.mkdir(versionedSummaryDir, { recursive: true });
 
-  await fs.mkdir(latestOutputDir, { recursive: true });
-  await fs.mkdir(latestConstructorDir, { recursive: true });
+  await fs.mkdir(latestRaceDir, { recursive: true });
   await fs.mkdir(latestSummaryDir, { recursive: true });
 
-  for (const [, driverData] of driverBreakdowns) {
-    const filename = `${driverData.abbreviation}.json`;
-    const versionedFilepath = path.join(versionedOutputDir, filename);
-    const latestFilepath = path.join(latestOutputDir, filename);
-
-    const jsonData = JSON.stringify(driverData, null, 2);
-    await fs.writeFile(versionedFilepath, jsonData);
-    await fs.writeFile(latestFilepath, jsonData);
-
-    const swapIndicator = driverData.teamSwap ? " [TEAM SWAP]" : "";
+  const raceData = organizeRaceData(driverBreakdowns, constructorBreakdowns);
+  for (const [round, data] of Object.entries(raceData)) {
+    const safeName = data.raceName.replace(/[^a-z0-9]+/gi, "_").toLowerCase();
+    const filename = `${round}-${safeName}.json`;
+    const versionedFile = path.join(versionedRaceDir, filename);
+    const latestFile = path.join(latestRaceDir, filename);
+    const jsonData = JSON.stringify(data, null, 2);
+    await fs.writeFile(versionedFile, jsonData);
+    await fs.writeFile(latestFile, jsonData);
     console.log(
-      `✅ Saved: ${filename} (${driverData.races.length} races, ${driverData.percentagePicked}% picked)${swapIndicator}`,
-    );
-  }
-
-  for (const [, constructorData] of constructorBreakdowns) {
-    const filename = `${constructorData.abbreviation}.json`;
-    const versionedFilepath = path.join(versionedConstructorDir, filename);
-    const latestFilepath = path.join(latestConstructorDir, filename);
-
-    const jsonData = JSON.stringify(constructorData, null, 2);
-    await fs.writeFile(versionedFilepath, jsonData);
-    await fs.writeFile(latestFilepath, jsonData);
-
-    console.log(
-      `✅ Saved constructor: ${filename} (${constructorData.races.length} races, ${constructorData.percentagePicked}% picked)`,
+      `✅ Saved race: ${filename} (${Object.keys(data.drivers).length} drivers, ${Object.keys(data.constructors).length} constructors)`,
     );
   }
 
@@ -373,4 +408,5 @@ module.exports = {
   fixWeekendSummaryOrdering,
   fixConstructorWeekendSummaryOrdering,
   getSortedRoundKeys,
+  organizeRaceData,
 };
