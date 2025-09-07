@@ -2,6 +2,35 @@ const { CONFIG } = require("./config");
 
 async function closePopup(page) {
   try {
+    const cookieHeading = await page.$(
+      'h2:has-text("YOUR CHOICES REGARDING COOKIES ON THIS SITE")',
+    );
+    if (cookieHeading) {
+      const manageButton = await page.$(
+        'button[aria-label="No, manage settings"]',
+      );
+      if (manageButton) {
+        await manageButton.click();
+        try {
+          await page.waitForSelector('h2:has-text("MANAGE YOUR CHOICES")', {
+            timeout: CONFIG.DELAYS.POPUP_WAIT,
+          });
+        } catch (e) {
+          // ignore timeout waiting for manage choices modal
+        }
+        const rejectButton = await page.$('button[aria-label="Reject all"]');
+        if (rejectButton) {
+          await rejectButton.click();
+          await page.waitForTimeout(CONFIG.DELAYS.POPUP_CLOSE);
+          return;
+        }
+      }
+    }
+  } catch (e) {
+    // Ignore errors when handling cookie permissions modal
+  }
+
+  try {
     const buttons = await page.$$("button");
     for (const button of buttons) {
       try {
