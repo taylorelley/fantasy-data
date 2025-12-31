@@ -6,7 +6,7 @@ const CONFIG = {
   OUTPUT_DIR: "driver_data",
   CONSTRUCTOR_OUTPUT_DIR: "constructor_data",
   SUMMARY_OUTPUT_DIR: "summary_data",
-  BROWSER_HEADLESS: false, // Set to true for production
+  BROWSER_HEADLESS: true, // Set to true for production
   PROCESS_ALL_DRIVERS: true,
   PROCESS_ALL_CONSTRUCTORS: true,
   DELAYS: {
